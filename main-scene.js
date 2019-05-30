@@ -51,7 +51,7 @@ class Solar_System extends Scene
                                               // TODO (#2):  Complete this list with any additional materials you need:
 
       this.materials = { plastic: new Material( phong_shader, 
-                                    { ambient: 0, diffusivity: 1, specularity: 0, color: Color.of( 1,.5,1,1 ) } ),
+                                    { ambient: 1, diffusivity: 1, specularity: 0, color: Color.of( 1,.5,1,1 ) } ),
                    plastic_stars: new Material( texture_shader_2,    
                                     { texture: new Texture( "assets/stars.png" ),
                                       ambient: 0, diffusivity: 1, specularity: 0, color: Color.of( .4,.4,.4,1 ) } ),
@@ -72,33 +72,32 @@ class Solar_System extends Scene
         this.star_matrices.push( Mat4.rotation( Math.PI/2 * (Math.random()-.5), Vec.of( 0,1,0 ) )
                          .times( Mat4.rotation( Math.PI/2 * (Math.random()-.5), Vec.of( 1,0,0 ) ) )
                          .times( Mat4.translation([ 0,0,-150 ]) ) );
+
+      this.thrust = Vec.of( 0,0,0 );
+      this.model_transform = Mat4.identity();
     }
   make_control_panel()
     {                                 // make_control_panel(): Sets up a panel of interactive HTML elements, including
                                       // buttons with key bindings for affecting this scene, and live info readouts.
 
                                  // TODO (#5b): Add a button control.  Provide a callback that flips the boolean value of "this.lights_on".
-       // this.key_triggered_button( 
+       // this.key_triggered_button(  thrust[1]=1; 
+       this.key_triggered_button( "Up",     [ " " ], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0 );
+      this.key_triggered_button( "Forward",[ "w" ], () => this.thrust[2] =  1, undefined, () => this.thrust[2] = 0 );
+      this.new_line();
+      this.key_triggered_button( "Left",   [ "a" ], () => this.thrust[0] =  -1, undefined, () => this.thrust[0] = 0 );
+      this.key_triggered_button( "Back",   [ "s" ], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0 );
+      this.key_triggered_button( "Right",  [ "d" ], () => this.thrust[0] = 1, undefined, () => this.thrust[0] = 0 );
+      this.new_line();
+      this.key_triggered_button( "Accelerate",   [ "shift" ], () => this.thrust[1] =  3, undefined, () => this.thrust[1] = 0 ); 
+
     }
   display( context, program_state )
-    {                                                // display():  Called once per frame of animation.  For each shape that you want to
-                                                     // appear onscreen, place a .draw() call for it inside.  Each time, pass in a
-                                                     // different matrix value to control where the shape appears.
-     
-                           // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
+    {    
       if( !context.scratchpad.controls ) 
-        {                       // Add a movement controls panel to the page:
+        {     
           this.children.push( context.scratchpad.controls = new defs.Movement_Controls() ); 
-
-                                // Add a helper scene / child scene that allows viewing each moving body up close.
-          this.children.push( this.camera_teleporter = new Camera_Teleporter() );
-
-                    // Define the global camera and projection matrices, which are stored in program_state.  The camera
-                    // matrix follows the usual format for transforms, but with opposite values (cameras exist as 
-                    // inverted matrices).  The projection matrix follows an unusual format and determines how depth is 
-                    // treated when projecting 3D points onto a plane.  The Mat4 functions perspective() and
-                    // orthographic() automatically generate valid matrices for one.  The input arguments of
-                    // perspective() are field of view, aspect ratio, and distances to the near plane and far plane.          
+          this.children.push( this.camera_teleporter = new Camera_Teleporter() );       
           program_state.set_camera( Mat4.look_at( Vec.of( 0,10,20 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) ) );
           this.initial_camera_location = program_state.camera_inverse;
           program_state.projection_transform = Mat4.perspective( Math.PI/4, context.width/context.height, 1, 200 );
@@ -110,106 +109,15 @@ class Solar_System extends Scene
 
                                                   // Have to reset this for each frame:
       this.camera_teleporter.cameras = [];
-      this.camera_teleporter.cameras.push( Mat4.look_at( Vec.of( 0,10,20 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) ) );
-
-
-                                             // Variables that are in scope for you to use:
-                                             // this.shapes: Your shapes, defined above.
-                                             // this.materials: Your materials, defined above.
-                                             // this.lights:  Assign an array of Light objects to this to light up your scene.
-                                             // this.lights_on:  A boolean variable that changes when the user presses a button.
-                                             // this.camera_teleporter: A child scene that helps you see your planets up close.
-                                             //                         For this to work, you must push their inverted matrices
-                                             //                         into the "this.camera_teleporter.cameras" array.
-                                             // t:  Your program's time in seconds.
-                                             // program_state:  Information the shader needs for drawing.  Pass to draw().
-                                             // context:  Wraps the WebGL rendering context shown onscreen.  Pass to draw().                                                       
-
-
-      /**********************************
-      Start coding down here!!!!
-      **********************************/         
+   
 
       const blue = Color.of( 0,0,.5,1 ), yellow = Color.of( .5,.5,0,1 );
-
-                                    // Variable model_transform will be a local matrix value that helps us position shapes.
-                                    // It starts over as the identity every single frame - coordinate axes at the origin.
-      let model_transform = Mat4.identity();
-
-                                                  // TODO (#3b):  Use the time-varying value of sun_size to create a scale matrix 
-                                                  // for the sun. Also use it to create a color that turns redder as sun_size
-                                                  // increases, and bluer as it decreases.
-      const smoothly_varying_ratio = .5 + .5 * Math.sin( 2 * Math.PI * t/10 ),
-            sun_size = 1 + 2 * smoothly_varying_ratio,
-                 sun = undefined,
-           sun_color = undefined;
-
-      this.materials.sun.color = sun_color;     // Assign our current sun color to the existing sun material.          
-
-                                                // *** Lights: *** Values of vector or point lights.  They'll be consulted by 
-                                                // the shader when coloring shapes.  See Light's class definition for inputs.
-
-                                                // TODO (#3c):  Replace with a point light located at the origin, with the sun's color
-                                                // (created above).  For the third argument pass in the point light's size.  Use
-                                                // 10 to the power of sun_size.
-      program_state.lights = [ new Light( Vec.of( 0,0,0,1 ), Color.of( 1,1,1,1 ), 100000 ) ];
-
-                            // TODO (#5c):  Throughout your program whenever you use a material (by passing it into draw),
-                            // pass in a modified version instead.  Call .override( modifier ) on the material to
-                            // generate a new one that uses the below modifier, replacing the ambient term with a 
-                            // new value based on our light switch.                         
+      
+      program_state.lights = [ new Light( Vec.of( 0,0,0,1 ), Color.of( 1,1,1,1 ), 100000 ) ];                        
       const modifier = this.lights_on ? { ambient: 0.3 } : { ambient: 0.0 };
-
-                                                // TODO (#3d):   Draw the sun using its matrix (crated by you above) and material.
-     
-                                                // TODO (#4d1):  Draw planet 1 orbiting at 5 units radius, revolving AND rotating at 1 radian/sec.
-      
-                                                // TODO (#4d2):  Draw planet 2 orbiting 3 units farther, revolving AND rotating slower.
-      
-                                                // TODO (#6b1):  Draw moon 1 orbiting 2 units away from planet 2, revolving AND rotating.
-      
-                                                // TODO (#4d3):  Draw planet 3 orbiting 3 units farther, revolving AND rotating slower.
-      
-                                                // TODO (#6b2):  Draw moon 2 orbiting 2 units away from planet 3, revolving AND rotating.
-     
-                                                // TODO (#4d4):  Draw planet 4
-      
-                                                // TODO (#4d5):  Draw planet 5
-      
-                                                // TODO (#5a): If the light switch is on, loop through star_matrices and draw 2D stars.
-      
-                                                // TODO (#7b): Give the child scene (camera_teleporter) the *inverted* matrices
-                                                // for each of your objects, mimicking the examples above.  Tweak each
-                                                // matrix a bit so you can see the planet, or maybe appear to be standing
-                                                // on it.  Remember the moons.
-      // this.camera_teleporter.cameras.push( Mat4.inverse( 
-
-
-
-
-      // ***** BEGIN TEST SCENE *****               
-                                          // TODO:  Delete (or comment out) the rest of display(), starting here:
-
-      program_state.set_camera( Mat4.translation([ 0,3,-10 ]) );
-      const angle = Math.sin( t );
-      const light_position = Mat4.rotation( angle, [ 1,0,0 ] ).times( Vec.of( 0,-1,1,0 ) );
-      program_state.lights = [ new Light( light_position, Color.of( 1,1,1,1 ), 1000000 ) ];
-      model_transform = Mat4.identity();
-      this.shapes.box.draw( context, program_state, model_transform, this.materials.plastic.override( yellow ) );
-      model_transform.post_multiply( Mat4.translation([ 0, -2, 0 ]) );
-      this.shapes.ball_4.draw( context, program_state, model_transform, this.materials.metal_earth.override( blue ) );
-      model_transform.post_multiply( Mat4.rotation( t, Vec.of( 0,1,0 ) ) )
-      model_transform.post_multiply( Mat4.rotation( 1, Vec.of( 0,0,1 ) )
-                             .times( Mat4.scale      ([ 1,   2, 1 ]) )
-                             .times( Mat4.translation([ 0,-1.5, 0 ]) ) );
-      this.shapes.box.draw( context, program_state, model_transform, this.materials.plastic_stars.override( yellow ) );
-
-      // ***** END TEST SCENE *****
-
-      // Warning: Get rid of the test scene, or else the camera position and movement will not work.
-
-
-
+      //model_transform = Mat4.identity();
+      this.model_transform = this.model_transform.times( Mat4.translation( this.thrust.times(0.5 ) ) );
+      this.shapes.box.draw( context, program_state, this.model_transform, this.materials.plastic.override( yellow ) );
     }
 }
 

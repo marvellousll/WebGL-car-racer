@@ -574,7 +574,7 @@ class Fake_Bump_Map extends Textured_Phong
 
 
 const Movement_Controls = defs.Movement_Controls =
-class Movement_Controls extends Scene
+class  extends Scene
 {                                       // **Movement_Controls** is a Scene that can be attached to a canvas, like any other
                                         // Scene, but it is a Secondary Scene Component -- meant to stack alongside other 
                                         // scenes.  Rather than drawing anything it embeds both first-person and third-
@@ -601,8 +601,7 @@ class Movement_Controls extends Scene
   reset( graphics_state )
     {                         // reset(): Initially, the default target is the camera matrix that Shaders use, stored in the
                               // encountered program_state object.  Targets must be pointer references made using closures.
-      this.set_recipient( () => graphics_state.camera_transform, 
-                          () => graphics_state.camera_inverse   );
+      this.set_recipient( () => graphics_state.camera_transform, () => graphics_state.camera_inverse   );
     }
   add_mouse_controls( canvas )
     {                                       // add_mouse_controls():  Attach HTML mouse events to the drawing canvas.
