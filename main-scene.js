@@ -2,7 +2,7 @@ import {tiny, defs} from './assignment-4-resources.js';
                                                                 // Pull these names into this module's scope for convenience:
 const { Vec, Mat, Mat4, Color, Light, Shape, Shader, Material, Texture,
          Scene, Canvas_Widget, Code_Widget, Text_Widget } = tiny;
-const { Cube, Subdivision_Sphere, Transforms_Sandbox_Base } = defs;
+const { Cube, Subdivision_Sphere, Transforms_Sandbox_Base, Torus, Square, Triangle } = defs;
 
     // Now we have loaded everything in the files tiny-graphics.js, tiny-graphics-widgets.js, and assignment-4-resources.js.
     // This yielded "tiny", an object wrapping the stuff in the first two files, and "defs" for wrapping all the rest.
@@ -20,9 +20,12 @@ class Solar_System extends Scene
                                                         // Don't define blueprints for shapes in display() every frame.
 
                                                 // TODO (#1):  Complete this list with any additional shapes you need.
-      this.shapes = { 'box' : new Cube(),
+      this.shapes = { 'cube' : new Cube(),
                    'ball_4' : new Subdivision_Sphere( 4 ),
-                     'star' : new Planar_Star() };
+                     'star' : new Planar_Star(),
+                     'torus': new Torus(100,100,[0,10]),
+                    'square': new Square(),
+                  'triangle': new Triangle() };
 
                                                         // TODO (#1d): Modify one sphere shape's existing texture 
                                                         // coordinates in place.  Multiply them all by 5.
@@ -111,13 +114,148 @@ class Solar_System extends Scene
       this.camera_teleporter.cameras = [];
    
 
-      const blue = Color.of( 0,0,.5,1 ), yellow = Color.of( .5,.5,0,1 );
+      const wheat = Color.of(0.960784, 0.870588, 0.701961, 1), papayawhip = Color.of(1, 0.937255, 0.835294, 1), cyan = Color.of(0,1,1,1);
+      const darkgray = Color.of(0.662745, 0.662745, 0.662745, 1), gold = Color.of(1, 0.843137, 0, 1);
       
       program_state.lights = [ new Light( Vec.of( 0,0,0,1 ), Color.of( 1,1,1,1 ), 100000 ) ];                        
       const modifier = this.lights_on ? { ambient: 0.3 } : { ambient: 0.0 };
-      //model_transform = Mat4.identity();
-      this.model_transform = this.model_transform.times( Mat4.translation( this.thrust.times(0.5 ) ) );
-      this.shapes.box.draw( context, program_state, this.model_transform, this.materials.plastic.override( yellow ) );
+
+      let model_transform = Mat4.identity();
+      var _this = this;
+
+      function draw_car(context, program_state, car_transform)
+      {
+          let base_transform = model_transform.times( Mat4.scale(Vec.of(2.5,0.8,8)) );
+          _this.shapes.cube.draw(context, program_state, base_transform, _this.materials.plastic.override( wheat ));
+
+          base_transform = base_transform.times( Mat4.scale(Vec.of(1/2.5, 1/0.8,1/8)) );
+
+          let wheel1_transform = base_transform.times( Mat4.translation([2.5,-1,-6]))
+                                               .times( Mat4.rotation(Math.PI/2, [0,1,0]))
+                                               .times( Mat4.scale(Vec.of(1,1,2)));
+
+          let wheel2_transform = base_transform.times( Mat4.translation([-2.5,-1,-6]))
+                                               .times( Mat4.rotation(Math.PI/2, [0,1,0]))
+                                               .times( Mat4.scale(Vec.of(1,1,2)));
+
+          let wheel3_transform = base_transform.times( Mat4.translation([2.5,-1,6]))
+                                               .times( Mat4.rotation(Math.PI/2, [0,1,0]))
+                                               .times( Mat4.scale(Vec.of(1,1,2)));  
+
+          let wheel4_transform = base_transform.times( Mat4.translation([-2.5,-1,6]))
+                                               .times( Mat4.rotation(Math.PI/2, [0,1,0]))
+                                               .times( Mat4.scale(Vec.of(1,1,2)));                                                                
+
+          _this.shapes.torus.draw(context, program_state, wheel1_transform, _this.materials.plastic.override( darkgray ));
+          _this.shapes.torus.draw(context, program_state, wheel2_transform, _this.materials.plastic.override( darkgray ));
+          _this.shapes.torus.draw(context, program_state, wheel3_transform, _this.materials.plastic.override( darkgray ));
+          _this.shapes.torus.draw(context, program_state, wheel4_transform, _this.materials.plastic.override( darkgray ));
+
+          let light1_transform = base_transform.times( Mat4.translation([1.8,1.3,7]))
+                                               .times( Mat4.scale(Vec.of(0.5,0.5,0.5)));
+          _this.shapes.square.draw(context, program_state, light1_transform, _this.materials.plastic.override( gold ));
+          let side1_transform = light1_transform.times( Mat4.scale(Vec.of(2,2,2)))
+                                                .times( Mat4.rotation(Math.PI/2, [0,1,0]))
+                                                .times( Mat4.translation([0,-0.5,-0.5]));
+          _this.shapes.triangle.draw(context, program_state, side1_transform, _this.materials.plastic.override( darkgray));
+          _this.shapes.triangle.draw(context, program_state, side1_transform.times( Mat4.translation([0,0,1])), _this.materials.plastic.override(darkgray));
+          let top1_transform = side1_transform.times( Mat4.scale(Vec.of(2,2,2)))
+                                              .times( Mat4.translation([.18,.33,.25]))
+                                              .times( Mat4.rotation(Math.PI/4, [0,0,-1]))
+                                              .times( Mat4.scale(Vec.of(0.4,0.05,0.25)));
+          _this.shapes.cube.draw(context, program_state, top1_transform, _this.materials.plastic.override( darkgray));
+
+          let light2_transform = base_transform.times( Mat4.translation([-1.8,1.3,7]))
+                                               .times( Mat4.scale(Vec.of(0.5,.5,.5)))
+          _this.shapes.square.draw(context, program_state, light2_transform, _this.materials.plastic.override( gold ));
+
+          let side2_transform = light2_transform.times( Mat4.scale(Vec.of(2,2,2)))
+                                                .times( Mat4.rotation(Math.PI/2, [0,1,0]))
+                                                .times( Mat4.translation([0,-0.5,-0.5]));
+          _this.shapes.triangle.draw(context, program_state, side2_transform, _this.materials.plastic.override( darkgray));
+          _this.shapes.triangle.draw(context, program_state, side2_transform.times( Mat4.translation([0,0,1])), _this.materials.plastic.override(darkgray));
+
+          let top2_transform = side2_transform.times( Mat4.scale(Vec.of(2,2,2)))
+                                              .times( Mat4.translation([.18,.33,.25]))
+                                              .times( Mat4.rotation(Math.PI/4, [0,0,-1]))
+                                              .times( Mat4.scale(Vec.of(0.4,0.05,0.25)));
+          _this.shapes.cube.draw(context, program_state, top2_transform, _this.materials.plastic.override( darkgray));
+
+          let window_transform = base_transform.times( Mat4.translation([2.5,.8,0]))
+                                               .times( Mat4.scale([2.5,2.5,2.5]))
+                                               .times( Mat4.rotation(Math.PI/2, [0,-1,0]));
+          _this.shapes.triangle.draw(context, program_state, window_transform, _this.materials.plastic.override( cyan ));
+          _this.shapes.triangle.draw(context, program_state, window_transform.times( Mat4.translation([0,0,2])), _this.materials.plastic.override( cyan ));
+
+          let window_transform2 = window_transform.times( Mat4.scale([1/2.5,1/2.5,1/2.5]))
+                                                  .times( Mat4.translation([-2,1.25,0]))
+                                                  .times( Mat4.scale([2,1.25,1]));
+          _this.shapes.square.draw(context, program_state, window_transform2, _this.materials.plastic.override( cyan ));
+          _this.shapes.square.draw(context, program_state, window_transform2.times( Mat4.translation([0,0,5])), _this.materials.plastic.override( cyan ));
+
+          let decor_transform1 = base_transform.times( Mat4.translation([2.5,2.05,0]))
+                                               .times( Mat4.rotation(Math.PI/2, [0,0,-1]))
+                                               .times( Mat4.scale([1.25,0.05,0.05]));
+
+                                                                                    
+          _this.shapes.cube.draw(context, program_state, decor_transform1, _this.materials.plastic.override( papayawhip));
+          _this.shapes.cube.draw(context, program_state, decor_transform1.times( Mat4.translation([0,-100,0])), _this.materials.plastic.override( papayawhip));
+
+          let decor_transform2 = base_transform.times( Mat4.translation([0,1.1,4.625]))
+                                               .times( Mat4.scale([1,0.3,3.375]))
+
+          _this.shapes.cube.draw(context, program_state, decor_transform2, _this.materials.plastic.override( papayawhip ));
+
+          let front_transform = base_transform.times( Mat4.translation([0,2.05,1.25]))
+                                              .times( Mat4.rotation(Math.PI/4, [-1,0,0]))
+                                              .times( Mat4.scale([2.5,1.767,1]));
+
+          _this.shapes.square.draw(context, program_state, front_transform, _this.materials.plastic.override( cyan ));
+
+          let seattop_transform = base_transform.times( Mat4.translation([0,3.35,-2]))
+                                                .times( Mat4.scale([2.5,0.05,2]))
+           
+          _this.shapes.cube.draw(context, program_state, seattop_transform, _this.materials.plastic.override( papayawhip)); 
+
+          let seatback_transform = base_transform.times( Mat4.translation([0,2.05,-4]))
+                                                 .times( Mat4.scale([2.5,1.25,0.05])) 
+           
+          _this.shapes.cube.draw(context, program_state, seatback_transform, _this.materials.plastic.override( papayawhip ));
+
+          let rear_transform = base_transform.times( Mat4.translation([0,1.3,-7.5]))
+                                             .times( Mat4.scale([2.5,.5,.5]))
+
+          _this.shapes.cube.draw(context, program_state, rear_transform, _this.materials.plastic.override( papayawhip )); 
+
+          let beam_transform = base_transform.times( Mat4.translation([2.5,2.05,1.25]))
+                                             .times( Mat4.rotation(Math.PI/4, [1,0,0]))
+                                             .times( Mat4.scale([0.05, 0.05,1.767]))
+
+          _this.shapes.cube.draw(context, program_state, beam_transform, _this.materials.plastic.override( papayawhip ));
+          _this.shapes.cube.draw(context, program_state, beam_transform.times( Mat4.translation([-100,0,0])), _this.materials.plastic.override( papayawhip ));
+
+          let mirror1_transform = base_transform.times( Mat4.translation([2.5,2.05,1.25]))
+                                                .times( Mat4.rotation(Math.PI/3, [1,0,0]))
+                                                .times( Mat4.rotation(Math.PI/6, [0,0,-1]))
+                                                .times( Mat4.translation([.6,0,0]))
+                                                .times( Mat4.scale([.6,.2,.4]))
+          _this.shapes.cube.draw(context, program_state, mirror1_transform, _this.materials.plastic.override( papayawhip ));
+
+          let mirror2_transform = base_transform.times( Mat4.translation([-2.5,2.05,1.25]))
+                                                .times( Mat4.rotation(Math.PI/3, [1,0,0]))
+                                                .times( Mat4.rotation(Math.PI/6, [0,0,1]))
+                                                .times( Mat4.translation([-.6,0,0]))
+                                                .times( Mat4.scale([.6,.2,.4]))
+                                                
+           _this.shapes.cube.draw(context, program_state, mirror2_transform, _this.materials.plastic.override( papayawhip ));                                                                                                                                                                                 
+
+      }
+      
+      draw_car(context, program_state, model_transform);
+
+
+
+
     }
 }
 
