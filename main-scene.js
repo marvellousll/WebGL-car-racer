@@ -2,7 +2,7 @@ import {tiny, defs} from './assignment-4-resources.js';
                                                                 // Pull these names into this module's scope for convenience:
 const { Vec, Mat, Mat4, Color, Light, Shape, Shader, Material, Texture,
          Scene, Canvas_Widget, Code_Widget, Text_Widget } = tiny;
-const { Cube, Subdivision_Sphere, Transforms_Sandbox_Base, Torus, Square, Triangle } = defs;
+const { Cube, Subdivision_Sphere, Transforms_Sandbox_Base, Torus, Square, Triangle, Capped_Cylinder, Tetrahedron } = defs;
 
     // Now we have loaded everything in the files tiny-graphics.js, tiny-graphics-widgets.js, and assignment-4-resources.js.
     // This yielded "tiny", an object wrapping the stuff in the first two files, and "defs" for wrapping all the rest.
@@ -25,7 +25,15 @@ class Solar_System extends Scene
                      'star' : new Planar_Star(),
                      'torus': new Torus(100,100,[0,10]),
                     'square': new Square(),
-                  'triangle': new Triangle() };
+                  'triangle': new Triangle(),
+                  'cylinder': new Capped_Cylinder(100,100,[0,10]),
+                   'ball_6' : new Subdivision_Sphere( 6 ),
+              'tetrahedron' : new Tetrahedron( Boolean(false) ) };
+              
+      
+      this.sounds = { blast : new Audio('assets/blast.wav'),
+                      drift : new Audio('assets/carDrifting.wav'),
+                 accelerate : new Audio('assets/m3_accelerate.aiff')};            
 
                                                         // TODO (#1d): Modify one sphere shape's existing texture 
                                                         // coordinates in place.  Multiply them all by 5.
@@ -64,8 +72,26 @@ class Solar_System extends Scene
                                     { texture: new Texture( "assets/earth.gif" ),
                                       ambient: 0, diffusivity: 1, specularity: 1, color: Color.of( .4,.4,.4,1 ) } ),
                       black_hole: new Material( black_hole_shader ),
-                             sun: new Material( sun_shader, { ambient: 1, color: Color.of( 0,0,0,1 ) } )
-                       };
+                             sun: new Material( sun_shader, { ambient: 1, color: Color.of( 0,0,0,1 ) } ),
+                       skybox_zneg : new Material( texture_shader_2,
+                                    { texture: new Texture("assets/zneg.jpeg"),
+                                      ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
+                       skybox_zpos : new Material( texture_shader_2,
+                                    { texture: new Texture("assets/zpos.jpeg"),
+                                      ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
+                       skybox_xpos : new Material( texture_shader_2,
+                                    { texture: new Texture("assets/xpos.jpeg"),
+                                      ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
+                       skybox_xneg : new Material( texture_shader_2,
+                                    { texture: new Texture("assets/xneg.jpeg"),
+                                      ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
+                       skybox_ypos : new Material( texture_shader_2,
+                                    { texture: new Texture("assets/ypos.jpeg"),
+                                      ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
+                       skybox_yneg : new Material( texture_shader_2,
+                                    { texture: new Texture("assets/yneg.jpeg"),
+                                      ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
+                             };
 
                                   // Some setup code that tracks whether the "lights are on" (the stars), and also
                                   // stores 30 random location matrices for drawing stars behind the solar system:
@@ -85,7 +111,7 @@ class Solar_System extends Scene
 
                                  // TODO (#5b): Add a button control.  Provide a callback that flips the boolean value of "this.lights_on".
        // this.key_triggered_button(  thrust[1]=1; 
-       this.key_triggered_button( "Up",     [ " " ], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0 );
+      this.key_triggered_button( "Up",     [ " " ], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0 );
       this.key_triggered_button( "Forward",[ "w" ], () => this.thrust[2] =  1, undefined, () => this.thrust[2] = 0 );
       this.new_line();
       this.key_triggered_button( "Left",   [ "a" ], () => this.thrust[0] =  -1, undefined, () => this.thrust[0] = 0 );
@@ -115,13 +141,22 @@ class Solar_System extends Scene
    
 
       const wheat = Color.of(0.960784, 0.870588, 0.701961, 1), papayawhip = Color.of(1, 0.937255, 0.835294, 1), cyan = Color.of(0,1,1,1);
-      const darkgray = Color.of(0.662745, 0.662745, 0.662745, 1), gold = Color.of(1, 0.843137, 0, 1);
+      const darkgray = Color.of(0.662745, 0.662745, 0.662745, 1), gold = Color.of(1, 0.843137, 0, 1), brown = Color.of(0.823529, 0.411765, 0.117647, 1 );
       
       program_state.lights = [ new Light( Vec.of( 0,0,0,1 ), Color.of( 1,1,1,1 ), 100000 ) ];                        
       const modifier = this.lights_on ? { ambient: 0.3 } : { ambient: 0.0 };
 
       let model_transform = Mat4.identity();
       var _this = this;
+
+      function play_sound( name, volume = 1 )
+      { 
+        if( 0 < _this.sounds[ name ].currentTime && _this.sounds[ name ].currentTime < .3 ) return;
+        _this.sounds[ name ].currentTime = 0;
+        _this.sounds[ name ].volume = Math.min(Math.max(volume, 0), 1);
+        _this.sounds[ name ].play();
+      }
+
 
       function draw_car(context, program_state, car_transform)
       {
@@ -246,15 +281,83 @@ class Solar_System extends Scene
                                                 .times( Mat4.rotation(Math.PI/6, [0,0,1]))
                                                 .times( Mat4.translation([-.6,0,0]))
                                                 .times( Mat4.scale([.6,.2,.4]))
-                                                
+
            _this.shapes.cube.draw(context, program_state, mirror2_transform, _this.materials.plastic.override( papayawhip ));                                                                                                                                                                                 
 
       }
+
+      function draw_tree( context, program_state, model_transform)
+      {
+        let base_transform = model_transform.times( Mat4.rotation( Math.PI/2, [1,0,0]))
+                                            .times( Mat4.scale([1,1,20]));
+        
+        _this.shapes.cylinder.draw(context, program_state, base_transform, _this.materials.plastic.override( brown ));
+
+        let leaf_transform = model_transform.times( Mat4.translation([0,8,0]))
+                                            .times( Mat4.scale([4,4,4]))
+        _this.shapes.ball_4.draw(context, program_state, leaf_transform, _this.materials.plastic.override( Color.of(0,1,0,1) ));
+        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([0.6,-2/3,0])), _this.materials.plastic.override( Color.of(0,1,0,1)));
+        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([-0.6,-2/3,-0.6])), _this.materials.plastic.override( Color.of(0,1,0,1)));
+        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([-0.6,-2/3,0.6])), _this.materials.plastic.override( Color.of(0,1,0,1)));                                    
+      }
       
-      draw_car(context, program_state, model_transform);
+      function draw_pinetree(context, program_state, model_transform)
+      {
+        let base_transform = model_transform.times( Mat4.rotation( Math.PI/2, [1,0,0]))
+                                            .times( Mat4.scale([1,1,20]));
+        
+        _this.shapes.cylinder.draw(context, program_state, base_transform, _this.materials.plastic.override( brown ));
 
+        let leaf_transform = model_transform.times( Mat4.translation([0,10,0]))
+                                            .times( Mat4.rotation(Math.PI*3/4, [0,0,-1]))
+                                            .times( Mat4.rotation(Math.PI/4, [-1,0,0]))
+                                            .times( Mat4.scale([10,10,10]))
+        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform, _this.materials.plastic.override( Color.of(0,1,0,1)));
 
+        let leaf_transform2 = model_transform.times( Mat4.translation([0,13,0]))
+                                            .times( Mat4.rotation(Math.PI*3/4, [0,0,-1]))
+                                            .times( Mat4.rotation(Math.PI/4, [-1,0,0]))
+                                            .times( Mat4.scale([10,10,10]))
+        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform2, _this.materials.plastic.override( Color.of(0,1,0,1)));
+                                            
+       let leaf_transform3 = model_transform.times( Mat4.translation([0,16,0]))
+                                            .times( Mat4.rotation(Math.PI*3/4, [0,0,-1]))
+                                            .times( Mat4.rotation(Math.PI/4, [-1,0,0]))
+                                            .times( Mat4.scale([10,10,10]))
+        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform3, _this.materials.plastic.override( Color.of(0,1,0,1)));
+      }
+      
+      function draw_skybox( context, program_state, model_transform)
+      {
+        let front_transform = model_transform.times( Mat4.translation([0,0,-100]))
+                                             .times( Mat4.scale([100,100,100]))
+                                             .times( Mat4.rotation(Math.PI, [0,1,0]))
+        _this.shapes.square.draw(context, program_state, front_transform, _this.materials.skybox_zneg);
+        let back_transform = model_transform.times( Mat4.translation([0,0,100]))
+                                            .times( Mat4.scale([100,100,100]))
+        _this.shapes.square.draw(context, program_state, back_transform, _this.materials.skybox_zpos);
 
+        let right_transform = model_transform.times( Mat4.translation([100,0,0]))
+                                             .times( Mat4.scale([100,100,100]))
+                                             .times( Mat4.rotation(Math.PI/2, [0,1,0]))
+        _this.shapes.square.draw(context, program_state, right_transform, _this.materials.skybox_xpos);
+        let left_transform = model_transform.times( Mat4.translation([-100,0,0]))
+                                            .times( Mat4.scale([100,100,100]))
+                                            .times( Mat4.rotation(Math.PI/2, [0,-1,0]))
+        _this.shapes.square.draw(context, program_state, left_transform, _this.materials.skybox_xneg);
+
+        let up_transform = model_transform.times( Mat4.translation([0,100,0]))
+                                          .times( Mat4.scale([100,100,100]))
+                                          .times( Mat4.rotation(Math.PI/2, [-1,0,0]))
+        _this.shapes.square.draw(context, program_state, up_transform, _this.materials.skybox_ypos);
+        let down_transform = model_transform.times( Mat4.translation([0,-100,0]))
+                                          .times( Mat4.scale([100,100,100]))
+                                          .times( Mat4.rotation(Math.PI/2, [1,0,0]))
+        _this.shapes.square.draw(context, program_state, down_transform, _this.materials.skybox_yneg);                                                                                                                                                                                  
+      }
+
+      
+      draw_skybox(context, program_state, model_transform);
 
     }
 }
