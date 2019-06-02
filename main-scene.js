@@ -91,6 +91,9 @@ class Solar_System extends Scene
                        skybox_yneg : new Material( texture_shader_2,
                                     { texture: new Texture("assets/yneg.jpeg"),
                                       ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
+                          text_box : new Material( texture_shader_2,
+                                    { texture: new Texture("assets/textBox.jpeg"),
+                                      ambient: 0.6, diffusivity: 1, specularity: 0.5, color: Color.of(.4,.4,.4,1) })
                              };
 
                                   // Some setup code that tracks whether the "lights are on" (the stars), and also
@@ -304,27 +307,28 @@ class Solar_System extends Scene
       function draw_pinetree(context, program_state, model_transform)
       {
         let base_transform = model_transform.times( Mat4.rotation( Math.PI/2, [1,0,0]))
-                                            .times( Mat4.scale([1,1,20]));
+                                            .times( Mat4.scale([1,1,12]));
         
         _this.shapes.cylinder.draw(context, program_state, base_transform, _this.materials.plastic.override( brown ));
 
-        let leaf_transform = model_transform.times( Mat4.translation([0,10,0]))
-                                            .times( Mat4.rotation(Math.PI*3/4, [0,0,-1]))
-                                            .times( Mat4.rotation(Math.PI/4, [-1,0,0]))
+        let leaf_transform = model_transform.times( Mat4.translation([0,13,0]))
+                                            .times( Mat4.rotation(2.16, [1,0,-1]))
+                                            //.times( Mat4.rotation(Math.PI*3/4, [0,0,-1]))
+                                            //.times( Mat4.rotation(Math.PI/4, [-1,0,0]))
                                             .times( Mat4.scale([10,10,10]))
         _this.shapes.tetrahedron.draw(context, program_state, leaf_transform, _this.materials.plastic.override( Color.of(0,1,0,1)));
 
-        let leaf_transform2 = model_transform.times( Mat4.translation([0,13,0]))
+        let leaf_transform2 = model_transform.times( Mat4.translation([0,16,0]))
                                             .times( Mat4.rotation(Math.PI*3/4, [0,0,-1]))
                                             .times( Mat4.rotation(Math.PI/4, [-1,0,0]))
                                             .times( Mat4.scale([10,10,10]))
-        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform2, _this.materials.plastic.override( Color.of(0,1,0,1)));
+        //_this.shapes.tetrahedron.draw(context, program_state, leaf_transform2, _this.materials.plastic.override( Color.of(0,1,0,1)));
                                             
-       let leaf_transform3 = model_transform.times( Mat4.translation([0,16,0]))
+       let leaf_transform3 = model_transform.times( Mat4.translation([0,20,0]))
                                             .times( Mat4.rotation(Math.PI*3/4, [0,0,-1]))
                                             .times( Mat4.rotation(Math.PI/4, [-1,0,0]))
                                             .times( Mat4.scale([10,10,10]))
-        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform3, _this.materials.plastic.override( Color.of(0,1,0,1)));
+        //_this.shapes.tetrahedron.draw(context, program_state, leaf_transform3, _this.materials.plastic.override( Color.of(0,1,0,1)));
       }
       
       function draw_skybox( context, program_state, model_transform)
@@ -356,8 +360,7 @@ class Solar_System extends Scene
         _this.shapes.square.draw(context, program_state, down_transform, _this.materials.skybox_yneg);                                                                                                                                                                                  
       }
 
-      
-      draw_skybox(context, program_state, model_transform);
+      this.shapes.square.draw(context, program_state, model_transform.times( Mat4.scale([2,2,2])), this.materials.text_box);
 
     }
 }
@@ -540,37 +543,94 @@ class Black_Hole_Shader extends Shader         // Simple "procedural" texture sh
     }
 }
 
-
 const Sun_Shader = defs.Sun_Shader =
 class Sun_Shader extends Shader
-{ update_GPU( context, gpu_addresses, graphics_state, model_transform, material )
+{
+    update_GPU( context, gpu_addresses, program_state, model_transform, material )
+      { 
+        //super.update_GPU( context, gpu_addresses, gpu_state, model_transform, material );
+        const [ P, C, M ] = [ program_state.projection_transform, program_state.camera_inverse, model_transform ],
+                      PCM = P.times( C ).times( M );
+        context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat.flatten_2D_to_1D( PCM.transposed() ) );
+        context.uniform1f ( gpu_addresses.time, program_state.animation_time / 1000 );
+      }
+  shared_glsl_code()           
     {
-                      // TODO (#EC 2): Pass the same information to the shader as for EC part 1.  Additionally
-                      // pass material.color to the shader.
-
-
-    }
-                                // TODO (#EC 2):  Complete the shaders, displacing the input sphere's vertices as
-                                // a fireball effect and coloring fragments according to displacement.
-
-  shared_glsl_code()            // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
-    { return `precision mediump float;
-                            
+      return `precision highp float;
+             
       `;
     }
-  vertex_glsl_code()           // ********* VERTEX SHADER *********
-    { return this.shared_glsl_code() + `
+  vertex_glsl_code()           
+    {
+                          
+      return this.shared_glsl_code() + `
+        precision highp int;
 
-        void main()
-        {
+        uniform mat4 projection_camera_model_transform;
 
-        }`;
+        // Default attributes provided by THREE.js. Attributes are only available in the
+        // vertex shader. You can pass them to the fragment shader using varyings
+        attribute vec3 position;
+        attribute vec3 normal;
+        attribute vec2 uv;
+        attribute vec2 uv2;
+
+        // Examples of variables passed from vertex to fragment shader
+        varying vec3 vPosition;
+        varying vec3 vNormal;
+        varying vec2 vUv;
+        varying vec2 vUv2;
+
+        void main() {
+
+            // To pass variables to the fragment shader, you assign them here in the
+            // main function. Traditionally you name the varying with vAttributeName
+            vNormal = normal;
+            vUv = uv;
+            vUv2 = uv2;
+            vPosition = position;
+
+            // This sets the position of the vertex in 3d space. The correct math is
+            // provided below to take into account camera and object data.
+            gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
+
+        }
+      `;
     }
-  fragment_glsl_code()           // ********* FRAGMENT SHADER *********
-    { return this.shared_glsl_code() + `
-        void main() 
-        {
+  fragment_glsl_code()           
+    { 
+                         
+      return this.shared_glsl_code() + `
+        precision highp float;
 
-        } ` ;
+        varying vec2 vUv;
+        uniform float time;
+        const float speed = 8.0;
+        const float fadeAway = 0.5;
+        const vec3 color = vec3(0.8745, 0.5725, 0.0588);
+        const vec2 resolution = vec2(2,2);
+        const float uniformity = 10.0;
+        
+        void main(void) {
+            float t = time * speed;
+            vec2 position = (vUv.xy - resolution.xy * .5) / resolution.x;
+            float angle = atan(position.y, position.x) / (2. * 3.14159265359);
+            angle -= floor(angle);
+            float rad = length(position);
+            float angleFract = fract(angle * 256.);
+            float angleRnd = floor(angle * 256.) + 1.;
+            float angleRnd1 = fract(angleRnd * fract(angleRnd * .7235) * 45.1);
+            float angleRnd2 = fract(angleRnd * fract(angleRnd * .82657) * 13.724);
+            float t2 = t + angleRnd1 * uniformity;
+            float radDist = sqrt(angleRnd2);
+            float adist = radDist / rad * .1;
+            float dist = (t2 * .1 + adist);
+            dist = abs(fract(dist) - fadeAway);
+
+            float outputColor = (1.0 / (dist)) * cos(0.7 * sin(t)) * adist / radDist / 30.0;
+            angle = fract(angle + .61);
+            gl_FragColor = vec4(outputColor * color, 1.0);
+        }
+      `;
     }
 }
