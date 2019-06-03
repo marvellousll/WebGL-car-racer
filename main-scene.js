@@ -39,8 +39,7 @@ export class Body
     {                        // blend_rotation(): Just naively do a linear blend of the rotations, which looks
                              // ok sometimes but otherwise produces shear matrices, a wrong result.
 
-                                  // TODO:  Replace this function with proper quaternion blending, and perhaps 
-                                  // store this.rotation in quaternion form instead for compactness.
+                                  
        return this.rotation.map( (x,i) => Vec.from( this.previous.rotation[i] ).mix( x, alpha ) );
     }
   blend_state( alpha )            
@@ -81,7 +80,7 @@ export class Body
 }
 
 const Main_Scene =
-class Solar_System extends Scene
+class City_Runner extends Scene
 {                                             // **Solar_System**:  Your Assingment's Scene.
   constructor()
     {                  // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
@@ -90,7 +89,7 @@ class Solar_System extends Scene
                                                         // definitions onto the GPU.  NOTE:  Only do this ONCE per shape.
                                                         // Don't define blueprints for shapes in display() every frame.
 
-                                                // TODO (#1):  Complete this list with any additional shapes you need.
+                                               
       this.shapes = { 'box' : new Cube(),
                    'ground' : new Cube(),
                    'ball_4' : new Subdivision_Sphere( 4 ),
@@ -113,9 +112,7 @@ class Solar_System extends Scene
       this.collider = { intersect_test: Body.intersect_cube, points: new defs.Subdivision_Sphere(4), leeway: .05 };
       this.off_road_collider = { intersect_test: Body.intersect_cube, points: new defs.Subdivision_Sphere(3), leeway: .4 };
 
-                                                        // TODO (#1d): Modify one sphere shape's existing texture 
-                                                        // coordinates in place.  Multiply them all by 5.
-      // this.shapes.ball_repeat.arrays.texture_coord.forEach( coord => coord
+                                                      
       
                                                               // *** Shaders ***
 
@@ -135,7 +132,6 @@ class Solar_System extends Scene
       
                                               // *** Materials: *** wrap a dictionary of "options" for a shader.
 
-                                              // TODO (#2):  Complete this list with any additional materials you need:
 
       this.materials = { plastic: new Material( phong_shader, 
                                     { ambient: 1, diffusivity: 1, specularity: 0, color: Color.of( 1,.5,1,1 ) } ),
@@ -196,16 +192,7 @@ class Solar_System extends Scene
       this.thrust = Vec.of( 0,0,0 );
       this.model_transform = Mat4.identity();
 
-      
-
-//       this.player_color = Color.of(1,1,1,1);
-//       this.player_material = this.materials.plastic;
-
       this.bodies.push(new Body(this.shapes.box, this.materials.plastic.override( Color.of(1,1,1,1)), Vec.of(1,1,1)).emplace(Mat4.identity().times(Mat4.translation([0,0.295,0])).times(Mat4.scale([.25*0.5,0.08*0.5,.6*0.5]))));
-//       this.player_shape = this.shapes.box;
-      
-//       this.bodies.push(new Body(this.player_shape, this.materials.plastic, Vec.of(1,1,1))
-//                  .emplace(Mat4.identity().times (Mat4.scale([0.5,0.5,1])),0,0));
 
       this.obstacles.push(new Body(this.shapes.box, this.materials.plastic, Vec.of(1,1,1))
                  .emplace(Mat4.identity().times(Mat4.translation([0,0,-10])).times(Mat4.scale([.5,1,.5])),0,0));
@@ -235,13 +222,10 @@ class Solar_System extends Scene
     {                                 // make_control_panel(): Sets up a panel of interactive HTML elements, including
                                       // buttons with key bindings for affecting this scene, and live info readouts.
 
-                                 // TODO (#5b): Add a button control.  Provide a callback that flips the boolean value of "this.lights_on".
-       // this.key_triggered_button(  thrust[1]=1; 
       this.key_triggered_button( "Reverse",     [ "ArrowDown" ], () => this.acceleration = -0.03, undefined, () => this.acceleration = 0.01 );
       this.key_triggered_button( "Accelerate",[ "ArrowUp" ], () => this.acceleration = 0.05, undefined, () => this.acceleration = -0.01 );
       this.new_line();
       this.key_triggered_button( "Move Left",   [ "a" ], () => this.thrust[0] =  -10, undefined, () => this.thrust[0] = 0 );
-      //this.key_triggered_button( "Back",   [ "s" ], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0 );
       this.key_triggered_button( "Move Right",  [ "d" ], () => this.thrust[0] = 10, undefined, () => this.thrust[0] = 0 );
       
       this.key_triggered_button( "Turn Right",  [ "ArrowRight" ], () => this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1])).post_multiply(Mat4.rotation(-0.1,Vec.of(0,1,0))).post_multiply(Mat4.scale([0.5,0.5,1])), undefined, () => this.model_transform = this.model_transform );
@@ -267,8 +251,7 @@ class Solar_System extends Scene
 
       if( !context.scratchpad.controls ) 
         {     
-          this.children.push( context.scratchpad.controls = new defs.Movement_Controls() ); 
-          this.children.push( this.camera_teleporter = new Camera_Teleporter() );       
+          context.scratchpad.controls = true;       
           program_state.set_camera( Mat4.look_at( Vec.of( 0,90,40 ), Vec.of( 0,90,0 ), Vec.of( 0,1,0 ) ) );
           this.initial_camera_location = program_state.camera_inverse;
           program_state.projection_transform = Mat4.perspective( Math.PI/4, context.width/context.height, 1, 800 );
@@ -296,7 +279,6 @@ class Solar_System extends Scene
         this.velocity = Math.max(this.velocity,0);
       else if(this.acceleration == 0.01)
         this.velocity = Math.min(this.velocity,0);
-      draw_road();
    //collision with obstacles
     for(let a of this.obstacles){
          a.inverse = Mat4.inverse( a.drawn_location );
@@ -305,7 +287,7 @@ class Solar_System extends Scene
           if( !a.check_if_colliding( b, this.collider ) ){
             continue;
           }else{
-            this.hp=Math.max(this.hp-0.01,0);
+            this.hp=Math.max(this.hp-0.03,0);
             this.velocity = Math.min(this.velocity, 0);
           }
         }
@@ -324,7 +306,7 @@ class Solar_System extends Scene
         if(!this.off_road) break;
      }
     if(this.off_road)
-        this.hp=Math.max(this.hp-0.01,0);
+        this.hp=Math.max(this.hp-0.02,0);
     
       //velocity cap
       if(this.velocity > 0)
@@ -361,7 +343,6 @@ class Solar_System extends Scene
 
       let intro_transform = Mat4.identity().times(Mat4.translation([0,90,0]))
                                           .times(Mat4.scale([20,20,1/5]));
-      //this.shapes.box.draw(context,program_state,intro_transform,this.materials.plastic);
       this.shapes.square.draw(context, program_state, intro_transform, this.materials.text_box)
       
 
@@ -370,7 +351,7 @@ class Solar_System extends Scene
         //bird view
           const desired_camera = Mat4.inverse( Mat4.identity().times( Mat4.translation( [ 0,120,25 ] ) ).times(Mat4.rotation(-0.5*Math.PI,Vec.of(1,0,0))) );
           const dt = program_state.animation_delta_time;
-          program_state.set_camera( desired_camera.map( (x,i) => Vec.from( program_state.camera_inverse[i] ).mix( x, .005*dt ) ) );
+          program_state.set_camera( desired_camera.map( (x,i) => Vec.from( program_state.camera_inverse[i] ).mix( x, .003*dt ) ) );
       }else if(this.game_start){
         if(!this.perspective){
           //third person view
@@ -607,7 +588,6 @@ class Solar_System extends Scene
           _this.obstacles.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
         
-//         _this.shapes.cylinder.draw(context, program_state, bar_transform, _this.materials.metal.override( darkgray ));
         let sign_transform = base_transform.times( Mat4.translation([0,3,.2]))
                                             .times( Mat4.scale([1.5,1.5,1.5]))
 
@@ -661,8 +641,6 @@ class Solar_System extends Scene
         if(_this.first_frame)
           _this.obstacles.push(m_body);
         m_body.shape.draw( context, program_state, body_transform, m_body.material);
-
-//         _this.shapes.cylinder.draw( context, program_state, body_transform, _this.materials.plastic.override( building_color ) );
 
         let window_transform = base_transformation.times(Mat4.translation([0,0,-0.5*height+0.4+yspace])).times(Mat4.scale([x+.1,z+.1,0.8]));
         draw_repeat(_this.shapes.cylinder, window_transform, _this.materials.plastic.override( window_color ), 1, y, Mat4.identity, Mat4.translation([0,-0.8-yspace,0]));
@@ -749,18 +727,9 @@ class Solar_System extends Scene
 
 
         function draw_car(car_body){
-//           let base_transform = car_transform;
-          //let base_transform = car_transform.times(Mat4.translation([0,.4,18])).times( Mat4.scale(Vec.of(.25,0.08,.6)) ).times(Mat4.rotation(Math.PI, [0,1,0]));
-
-          
           car_body.shape.draw( context, program_state, car_body.drawn_location, car_body.material);
 
-           //.emplace(Mat4.identity().times(Mat4.translation([0,.4,18])).times( Mat4.scale(Vec.of(.25,0.08,.6)) ).times(Mat4.rotation(Math.PI, [0,1,0])), 0, 0))
-
-          //_this.shapes.box.draw(context, program_state, car_transform, _this.materials.plastic.override( wheat ));
-
           let base_transform = car_body.drawn_location.times(Mat4.scale([1/2.5,1/0.8,1/6*0.75])).times(Mat4.rotation(Math.PI, [0,1,0]));
-//           .times( Mat4.scale(Vec.of(1/2.5, 1/0.8,1/8)) )
           
           if (!_this.collide) {
             let wheel1_transform = base_transform.times( Mat4.translation([2.5,-1,-6]))
@@ -902,8 +871,6 @@ class Solar_System extends Scene
           _this.obstacles.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
         
-       // _this.shapes.cylinder.draw(context, program_state, base_transform, _this.materials.plastic.override( brown ));
-
         let leaf_transform = model_transform.times( Mat4.translation([0,8,0]))
                                             .times( Mat4.scale([4,4,4]))
         _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([0,.1,0])), _this.materials.leaves);
@@ -982,43 +949,6 @@ const Additional_Scenes = [];
 export { Main_Scene, Additional_Scenes, Canvas_Widget, Code_Widget, Text_Widget, defs }
 
 
-const Camera_Teleporter = defs.Camera_Teleporter =
-class Camera_Teleporter extends Scene
-{                               // **Camera_Teleporter** is a helper Scene meant to be added as a child to
-                                // your own Scene.  It adds a panel of buttons.  Any matrices externally
-                                // added to its "this.cameras" can be selected with these buttons. Upon
-                                // selection, the program_state's camera matrix slowly (smoothly)
-                                // linearly interpolates itself until it matches the selected matrix.
-  constructor() 
-    { super();
-      this.cameras = [];
-      this.selection = 0;
-    }
-  make_control_panel()
-    {                                // make_control_panel(): Sets up a panel of interactive HTML elements, including
-                                     // buttons with key bindings for affecting this scene, and live info readouts.
-      
-      this.key_triggered_button(  "Enable",       [ "e" ], () => this.enabled = true  );
-      this.key_triggered_button( "Disable", [ "Shift", "E" ], () => this.enabled = false );
-      this.new_line();
-      this.key_triggered_button( "Previous location", [ "g" ], this.decrease );
-      this.key_triggered_button(              "Next", [ "h" ], this.increase );
-      this.new_line();
-      this.live_string( box => { box.textContent = "Selected camera location: " + this.selection } );
-    }  
-  increase() { this.selection = Math.min( this.selection + 1, Math.max( this.cameras.length-1, 0 ) ); }
-  decrease() { this.selection = Math.max( this.selection - 1, 0 ); }   // Don't allow selection of negative indices.
-  display( context, program_state )
-  {
-    const desired_camera = this.cameras[ this.selection ];
-    if( !desired_camera || !this.enabled )
-      return;
-    const dt = program_state.animation_delta_time;
-    program_state.set_camera( desired_camera.map( (x,i) => Vec.from( program_state.camera_inverse[i] ).mix( x, .01*dt ) ) );    
-  }
-}
-
-
 const Planar_Star = defs.Planar_Star =
 class Planar_Star extends Shape
 {                                 // **Planar_Star** defines a 2D five-pointed star shape.  The star's inner 
@@ -1042,8 +972,6 @@ class Planar_Star extends Shape
                  
       this.arrays.normal        = this.arrays.position.map( p => Vec.of( 0,0,-1 ) );
 
-                                      // TODO (#5a):  Fill in some reasonable texture coordinates for the star:
-      // this.arrays.texture_coord = this.arrays.position.map( p => 
     }
 }
 
@@ -1051,8 +979,6 @@ const Sun_Shader = defs.Sun_Shader =
 class Sun_Shader extends Shader
 { update_GPU( context, gpu_addresses, graphics_state, model_transform, material )
     {
-                      // TODO (#EC 2): Pass the same information to the shader as for EC part 1.  Additionally
-                      // pass material.color to the shader.
         const [ P, C, M ] = [ graphics_state.projection_transform, graphics_state.camera_inverse, model_transform ],
                       PCM = P.times( C ).times( M );
         context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat.flatten_2D_to_1D( PCM.transposed() ) );
@@ -1064,8 +990,6 @@ class Sun_Shader extends Shader
         context.uniform1f( gpu_addresses.turbulenceDetail,    .63       );      
 
     }
-                                // TODO (#EC 2):  Complete the shaders, displacing the input sphere's vertices as
-                                // a fireball effect and coloring fragments according to displacement.
 
   shared_glsl_code()            // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
     { return `precision mediump float;
@@ -1240,8 +1164,6 @@ const Flame_Shader = defs.Flame_Shader =
 class Flame_Shader extends Shader
 { update_GPU( context, gpu_addresses, graphics_state, model_transform, material )
     {
-                      // TODO (#EC 2): Pass the same information to the shader as for EC part 1.  Additionally
-                      // pass material.color to the shader.
         const [ P, C, M ] = [ graphics_state.projection_transform, graphics_state.camera_inverse, model_transform ],
                       PCM = P.times( C ).times( M );
         context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat.flatten_2D_to_1D( PCM.transposed() ) );
@@ -1253,8 +1175,6 @@ class Flame_Shader extends Shader
         context.uniform1f( gpu_addresses.turbulenceDetail,    .63       );      
 
     }
-                                // TODO (#EC 2):  Complete the shaders, displacing the input sphere's vertices as
-                                // a fireball effect and coloring fragments according to displacement.
 
   shared_glsl_code()            // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
     { return `precision mediump float;
