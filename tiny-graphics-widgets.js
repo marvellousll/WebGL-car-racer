@@ -126,7 +126,7 @@ class Controls_Widget
   render( time = 0 )
     {                       // Check to see if we need to re-create the panels due to any scene being new.                      
                             // Traverse all scenes and their children, recursively:
-      const open_list = [ ...this.scenes ];
+       const open_list = [ ...this.scenes ];
       while( open_list.length )                       
       { open_list.push( ...open_list[0].children );
         const scene = open_list.shift();

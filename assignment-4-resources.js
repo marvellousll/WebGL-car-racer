@@ -233,7 +233,222 @@ class Subdivision_Sphere extends Shape
     }
 }
 
+const Grid_Patch = defs.Grid_Patch =
+class Grid_Patch extends Shape       // A grid of rows and columns you can distort. A tesselation of triangles connects the
+{                                           // points, generated with a certain predictable pattern of indices.  Two callbacks
+                                            // allow you to dynamically define how to reach the next row or column.
+  constructor( rows, columns, next_row_function, next_column_function, texture_coord_range = [ [ 0, rows ], [ 0, columns ] ]  )
+    { super( "position", "normal", "texture_coord" );
+      let points = [];
+      for( let r = 0; r <= rows; r++ ) 
+      { points.push( new Array( columns+1 ) );                                                    // Allocate a 2D array.
+                                             // Use next_row_function to generate the start point of each row. Pass in the progress ratio,
+        points[ r ][ 0 ] = next_row_function( r/rows, points[ r-1 ] && points[ r-1 ][ 0 ] );      // and the previous point if it existed.                                                                                                  
+      }
+      for(   let r = 0; r <= rows;    r++ )               // From those, use next_column function to generate the remaining points:
+        for( let c = 0; c <= columns; c++ )
+        { if( c > 0 ) points[r][ c ] = next_column_function( c/columns, points[r][ c-1 ], r/rows );
+      
+          this.arrays.position.push( points[r][ c ] );        
+                                                                                      // Interpolate texture coords from a provided range.
+          const a1 = c/columns, a2 = r/rows, x_range = texture_coord_range[0], y_range = texture_coord_range[1];
+          this.arrays.texture_coord.push( Vec.of( ( a1 )*x_range[1] + ( 1-a1 )*x_range[0], ( a2 )*y_range[1] + ( 1-a2 )*y_range[0] ) );
+        }
+      for(   let r = 0; r <= rows;    r++ )            // Generate normals by averaging the cross products of all defined neighbor pairs.
+        for( let c = 0; c <= columns; c++ )
+        { let curr = points[r][c], neighbors = new Array(4), normal = Vec.of( 0,0,0 );          
+          for( let [ i, dir ] of [ [ -1,0 ], [ 0,1 ], [ 1,0 ], [ 0,-1 ] ].entries() )         // Store each neighbor by rotational order.
+            neighbors[i] = points[ r + dir[1] ] && points[ r + dir[1] ][ c + dir[0] ];        // Leave "undefined" in the array wherever
+                                                                                              // we hit a boundary.
+          for( let i = 0; i < 4; i++ )                                          // Take cross-products of pairs of neighbors, proceeding
+            if( neighbors[i] && neighbors[ (i+1)%4 ] )                          // a consistent rotational direction through the pairs:
+              normal = normal.plus( neighbors[i].minus( curr ).cross( neighbors[ (i+1)%4 ].minus( curr ) ) );          
+          normal.normalize();                                                              // Normalize the sum to get the average vector.
+                                                     // Store the normal if it's valid (not NaN or zero length), otherwise use a default:
+          if( normal.every( x => x == x ) && normal.norm() > .01 )  this.arrays.normal.push( Vec.from( normal ) );    
+          else                                                      this.arrays.normal.push( Vec.of( 0,0,1 )    );
+        }   
+        
+      for( var h = 0; h < rows; h++ )             // Generate a sequence like this (if #columns is 10):  
+        for( var i = 0; i < 2 * columns; i++ )    // "1 11 0  11 1 12  2 12 1  12 2 13  3 13 2  13 3 14  4 14 3..." 
+          for( var j = 0; j < 3; j++ )
+            this.indices.push( h * ( columns + 1 ) + columns * ( ( i + ( j % 2 ) ) % 2 ) + ( ~~( ( j % 3 ) / 2 ) ? 
+                                   ( ~~( i / 2 ) + 2 * ( i % 2 ) )  :  ( ~~( i / 2 ) + 1 ) ) );
+    }
+  static sample_array( array, ratio )                 // Optional but sometimes useful as a next row or column operation. In a given array
+    {                                                 // of points, intepolate the pair of points that our progress ratio falls between.  
+      const frac = ratio * ( array.length - 1 ), alpha = frac - Math.floor( frac );
+      return array[ Math.floor( frac ) ].mix( array[ Math.ceil( frac ) ], alpha );
+    }
+}
+<<<<<<< HEAD
+<<<<<<< HEAD
+<<<<<<< HEAD
 
+
+const Surface_Of_Revolution = defs.Surface_Of_Revolution =
+class Surface_Of_Revolution extends Grid_Patch      
+{                                                   // SURFACE OF REVOLUTION: Produce a curved "sheet" of triangles with rows and columns.
+                                                    // Begin with an input array of points, defining a 1D path curving through 3D space -- 
+                                                    // now let each such point be a row.  Sweep that whole curve around the Z axis in equal 
+                                                    // steps, stopping and storing new points along the way; let each step be a column. Now
+                                                    // we have a flexible "generalized cylinder" spanning an area until total_curvature_angle.
+  constructor( rows, columns, points, texture_coord_range, total_curvature_angle = 2*Math.PI )
+    { const row_operation =     i => Grid_Patch.sample_array( points, i ),
+         column_operation = (j,p) => Mat4.rotation( total_curvature_angle/columns, Vec.of( 0,0,1 ) ).times(p.to4(1)).to3();
+         
+       super( rows, columns, row_operation, column_operation, texture_coord_range );
+    }
+}
+
+
+const Regular_2D_Polygon = defs.Regular_2D_Polygon =
+class Regular_2D_Polygon extends Surface_Of_Revolution     // Approximates a flat disk / circle
+  { constructor( rows, columns )
+      { super( rows, columns, Vec.cast( [0, 0, 0], [1, 0, 0] ) ); 
+        this.arrays.normal = this.arrays.normal.map( x => Vec.of( 0,0,1 ) );
+        this.arrays.texture_coord.forEach( (x, i, a) => a[i] = this.arrays.position[i].map( x => x/2 + .5 ).slice(0,2) ); } }
+
+const Cylindrical_Tube = defs.Cylindrical_Tube =
+class Cylindrical_Tube extends Surface_Of_Revolution    // An open tube shape with equally sized sections, pointing down Z locally.    
+  { constructor( rows, columns, texture_range ) { super( rows, columns, Vec.cast( [1, 0, .5], [1, 0, -.5] ), texture_range ); } }
+
+const Cone_Tip = defs.Cone_Tip =
+class Cone_Tip extends Surface_Of_Revolution    // Note:  Touches the Z axis; squares degenerate into triangles as they sweep around.
+  { constructor( rows, columns, texture_range ) { super( rows, columns, Vec.cast( [0, 0, 1],  [1, 0, -1]  ), texture_range ); } }
+
+const Torus = defs.Torus =
+class Torus extends Shape                                         // Build a donut shape.  An example of a surface of revolution.
+  { constructor( rows, columns, texture_range )  
+      { super( "position", "normal", "texture_coord" );
+        const circle_points = Array( rows ).fill( Vec.of( 1/3,0,0 ) )
+                                           .map( (p,i,a) => Mat4.translation([ -2/3,0,0 ])
+                                                    .times( Mat4.rotation( i/(a.length-1) * 2*Math.PI, Vec.of( 0,-1,0 ) ) )
+                                                    .times( Mat4.scale([ 1,1,3 ]) )
+                                                    .times( p.to4(1) ).to3() );
+
+        Surface_Of_Revolution.insert_transformed_copy_into( this, [ rows, columns, circle_points, texture_range ] );         
+      } }
+
+const Grid_Sphere = defs.Grid_Sphere =
+class Grid_Sphere extends Shape                  // With lattitude / longitude divisions; this means singularities are at 
+  { constructor( rows, columns, texture_range )         // the mesh's top and bottom.  Subdivision_Sphere is a better alternative.
+      { super( "position", "normal", "texture_coord" );
+        const semi_circle_points = Array( rows ).fill( Vec.of( 0,0,1 ) ).map( (x,i,a) =>
+                                     Mat4.rotation( i/(a.length-1) * Math.PI, Vec.of( 0,1,0 ) ).times( x.to4(1) ).to3() );
+        
+        Surface_Of_Revolution.insert_transformed_copy_into( this, [ rows, columns, semi_circle_points, texture_range ] );
+      } }
+
+const Closed_Cone = defs.Closed_Cone =
+class Closed_Cone extends Shape     // Combine a cone tip and a regular polygon to make a closed cone.
+  { constructor( rows, columns, texture_range )
+      { super( "position", "normal", "texture_coord" );
+        Cone_Tip          .insert_transformed_copy_into( this, [ rows, columns, texture_range ]);    
+        Regular_2D_Polygon.insert_transformed_copy_into( this, [ 1, columns ], Mat4.rotation( Math.PI, Vec.of(0, 1, 0) )
+                                                                       .times( Mat4.translation([ 0, 0, 1 ]) ) ); } }
+
+const Rounded_Closed_Cone = defs.Rounded_Closed_Cone =
+class Rounded_Closed_Cone extends Surface_Of_Revolution   // An alternative without two separate sections
+  { constructor( rows, columns, texture_range ) { super( rows, columns, Vec.cast( [0, 0, 1], [1, 0, -1], [0, 0, -1] ), texture_range ) ; } }
+
+const Capped_Cylinder = defs.Capped_Cylinder =
+class Capped_Cylinder extends Shape                // Combine a tube and two regular polygons to make a closed cylinder.
+  { constructor( rows, columns, texture_range )           // Flat shade this to make a prism, where #columns = #sides.
+      { super( "position", "normal", "texture_coord" );
+        Cylindrical_Tube  .insert_transformed_copy_into( this, [ rows, columns, texture_range ] );
+        Regular_2D_Polygon.insert_transformed_copy_into( this, [ 1, columns ],                                                  Mat4.translation([ 0, 0, .5 ]) );
+        Regular_2D_Polygon.insert_transformed_copy_into( this, [ 1, columns ], Mat4.rotation( Math.PI, Vec.of(0, 1, 0) ).times( Mat4.translation([ 0, 0, .5 ]) ) ); } }
+
+
+=======
+>>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
+
+=======
+
+>>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
+=======
+
+>>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
+
+const Surface_Of_Revolution = defs.Surface_Of_Revolution =
+class Surface_Of_Revolution extends Grid_Patch      
+{                                                   // SURFACE OF REVOLUTION: Produce a curved "sheet" of triangles with rows and columns.
+                                                    // Begin with an input array of points, defining a 1D path curving through 3D space -- 
+                                                    // now let each such point be a row.  Sweep that whole curve around the Z axis in equal 
+                                                    // steps, stopping and storing new points along the way; let each step be a column. Now
+                                                    // we have a flexible "generalized cylinder" spanning an area until total_curvature_angle.
+  constructor( rows, columns, points, texture_coord_range, total_curvature_angle = 2*Math.PI )
+    { const row_operation =     i => Grid_Patch.sample_array( points, i ),
+         column_operation = (j,p) => Mat4.rotation( total_curvature_angle/columns, Vec.of( 0,0,1 ) ).times(p.to4(1)).to3();
+         
+       super( rows, columns, row_operation, column_operation, texture_coord_range );
+    }
+}
+
+
+const Regular_2D_Polygon = defs.Regular_2D_Polygon =
+class Regular_2D_Polygon extends Surface_Of_Revolution     // Approximates a flat disk / circle
+  { constructor( rows, columns )
+      { super( rows, columns, Vec.cast( [0, 0, 0], [1, 0, 0] ) ); 
+        this.arrays.normal = this.arrays.normal.map( x => Vec.of( 0,0,1 ) );
+        this.arrays.texture_coord.forEach( (x, i, a) => a[i] = this.arrays.position[i].map( x => x/2 + .5 ).slice(0,2) ); } }
+
+const Cylindrical_Tube = defs.Cylindrical_Tube =
+class Cylindrical_Tube extends Surface_Of_Revolution    // An open tube shape with equally sized sections, pointing down Z locally.    
+  { constructor( rows, columns, texture_range ) { super( rows, columns, Vec.cast( [1, 0, .5], [1, 0, -.5] ), texture_range ); } }
+
+const Cone_Tip = defs.Cone_Tip =
+class Cone_Tip extends Surface_Of_Revolution    // Note:  Touches the Z axis; squares degenerate into triangles as they sweep around.
+  { constructor( rows, columns, texture_range ) { super( rows, columns, Vec.cast( [0, 0, 1],  [1, 0, -1]  ), texture_range ); } }
+
+const Torus = defs.Torus =
+class Torus extends Shape                                         // Build a donut shape.  An example of a surface of revolution.
+  { constructor( rows, columns, texture_range )  
+      { super( "position", "normal", "texture_coord" );
+        const circle_points = Array( rows ).fill( Vec.of( 1/3,0,0 ) )
+                                           .map( (p,i,a) => Mat4.translation([ -2/3,0,0 ])
+                                                    .times( Mat4.rotation( i/(a.length-1) * 2*Math.PI, Vec.of( 0,-1,0 ) ) )
+                                                    .times( Mat4.scale([ 1,1,3 ]) )
+                                                    .times( p.to4(1) ).to3() );
+
+        Surface_Of_Revolution.insert_transformed_copy_into( this, [ rows, columns, circle_points, texture_range ] );         
+      } }
+
+const Grid_Sphere = defs.Grid_Sphere =
+class Grid_Sphere extends Shape                  // With lattitude / longitude divisions; this means singularities are at 
+  { constructor( rows, columns, texture_range )         // the mesh's top and bottom.  Subdivision_Sphere is a better alternative.
+      { super( "position", "normal", "texture_coord" );
+        const semi_circle_points = Array( rows ).fill( Vec.of( 0,0,1 ) ).map( (x,i,a) =>
+                                     Mat4.rotation( i/(a.length-1) * Math.PI, Vec.of( 0,1,0 ) ).times( x.to4(1) ).to3() );
+        
+        Surface_Of_Revolution.insert_transformed_copy_into( this, [ rows, columns, semi_circle_points, texture_range ] );
+      } }
+
+const Closed_Cone = defs.Closed_Cone =
+class Closed_Cone extends Shape     // Combine a cone tip and a regular polygon to make a closed cone.
+  { constructor( rows, columns, texture_range )
+      { super( "position", "normal", "texture_coord" );
+        Cone_Tip          .insert_transformed_copy_into( this, [ rows, columns, texture_range ]);    
+        Regular_2D_Polygon.insert_transformed_copy_into( this, [ 1, columns ], Mat4.rotation( Math.PI, Vec.of(0, 1, 0) )
+                                                                       .times( Mat4.translation([ 0, 0, 1 ]) ) ); } }
+
+const Rounded_Closed_Cone = defs.Rounded_Closed_Cone =
+class Rounded_Closed_Cone extends Surface_Of_Revolution   // An alternative without two separate sections
+  { constructor( rows, columns, texture_range ) { super( rows, columns, Vec.cast( [0, 0, 1], [1, 0, -1], [0, 0, -1] ), texture_range ) ; } }
+
+const Capped_Cylinder = defs.Capped_Cylinder =
+class Capped_Cylinder extends Shape                // Combine a tube and two regular polygons to make a closed cylinder.
+  { constructor( rows, columns, texture_range )           // Flat shade this to make a prism, where #columns = #sides.
+      { super( "position", "normal", "texture_coord" );
+        Cylindrical_Tube  .insert_transformed_copy_into( this, [ rows, columns, texture_range ] );
+        Regular_2D_Polygon.insert_transformed_copy_into( this, [ 1, columns ],                                                  Mat4.translation([ 0, 0, .5 ]) );
+        Regular_2D_Polygon.insert_transformed_copy_into( this, [ 1, columns ], Mat4.rotation( Math.PI, Vec.of(0, 1, 0) ).times( Mat4.translation([ 0, 0, .5 ]) ) ); } }
+
+const Rounded_Capped_Cylinder = defs.Rounded_Capped_Cylinder =
+class Rounded_Capped_Cylinder extends Surface_Of_Revolution   // An alternative without three separate sections
+  { constructor ( rows, columns, texture_range ) { super( rows, columns, Vec.cast( [0, 0, .5], [1, 0, .5], [1, 0, -.5], [0, 0, -.5] ), texture_range ); } }
+  
 const Minimal_Shape = defs.Minimal_Shape =
 class Minimal_Shape extends tiny.Vertex_Buffer
 {                                     // **Minimal_Shape** an even more minimal triangle, with three
@@ -619,61 +834,61 @@ class  extends Scene
   make_control_panel()
     {                                 // make_control_panel(): Sets up a panel of interactive HTML elements, including
                                       // buttons with key bindings for affecting this scene, and live info readouts.
-      this.control_panel.innerHTML += "Click and drag the scene to <br> spin your viewpoint around it.<br>";
-      this.key_triggered_button( "Up",     [ " " ], () => this.thrust[1] = -1, undefined, () => this.thrust[1] = 0 );
-      this.key_triggered_button( "Forward",[ "w" ], () => this.thrust[2] =  1, undefined, () => this.thrust[2] = 0 );
-      this.new_line();
-      this.key_triggered_button( "Left",   [ "a" ], () => this.thrust[0] =  1, undefined, () => this.thrust[0] = 0 );
-      this.key_triggered_button( "Back",   [ "s" ], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0 );
-      this.key_triggered_button( "Right",  [ "d" ], () => this.thrust[0] = -1, undefined, () => this.thrust[0] = 0 );
-      this.new_line();
-      this.key_triggered_button( "Down",   [ "z" ], () => this.thrust[1] =  1, undefined, () => this.thrust[1] = 0 ); 
+//       this.control_panel.innerHTML += "Click and drag the scene to <br> spin your viewpoint around it.<br>";
+//       this.key_triggered_button( "Up",     [ " " ], () => this.thrust[1] = -1, undefined, () => this.thrust[1] = 0 );
+//       this.key_triggered_button( "Forward",[ "w" ], () => this.thrust[2] =  1, undefined, () => this.thrust[2] = 0 );
+//       this.new_line();
+//       this.key_triggered_button( "Left",   [ "a" ], () => this.thrust[0] =  1, undefined, () => this.thrust[0] = 0 );
+//       this.key_triggered_button( "Back",   [ "s" ], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0 );
+//       this.key_triggered_button( "Right",  [ "d" ], () => this.thrust[0] = -1, undefined, () => this.thrust[0] = 0 );
+//       this.new_line();
+//       this.key_triggered_button( "Down",   [ "z" ], () => this.thrust[1] =  1, undefined, () => this.thrust[1] = 0 ); 
 
-      const speed_controls = this.control_panel.appendChild( document.createElement( "span" ) );
-      speed_controls.style.margin = "30px";
-      this.key_triggered_button( "-",  [ "o" ], () => 
-                                            this.speed_multiplier  /=  1.2, "green", undefined, undefined, speed_controls );
-      this.live_string( box => { box.textContent = "Speed: " + this.speed_multiplier.toFixed(2) }, speed_controls );
-      this.key_triggered_button( "+",  [ "p" ], () => 
-                                            this.speed_multiplier  *=  1.2, "green", undefined, undefined, speed_controls );
-      this.new_line();
-      this.key_triggered_button( "Roll left",  [ "," ], () => this.roll =  1, undefined, () => this.roll = 0 );
-      this.key_triggered_button( "Roll right", [ "." ], () => this.roll = -1, undefined, () => this.roll = 0 );
-      this.new_line();
-      this.key_triggered_button( "(Un)freeze mouse look around", [ "f" ], () => this.look_around_locked ^=  1, "green" );
-      this.new_line();
-      this.live_string( box => box.textContent = "Position: " + this.pos[0].toFixed(2) + ", " + this.pos[1].toFixed(2) 
-                                                       + ", " + this.pos[2].toFixed(2) );
-      this.new_line();
-                                                  // The facing directions are surprisingly affected by the left hand rule:
-      this.live_string( box => box.textContent = "Facing: " + ( ( this.z_axis[0] > 0 ? "West " : "East ")
-                   + ( this.z_axis[1] > 0 ? "Down " : "Up " ) + ( this.z_axis[2] > 0 ? "North" : "South" ) ) );
-      this.new_line();
-      this.key_triggered_button( "Go to world origin", [ "r" ], () => { this. matrix().set_identity( 4,4 );
-                                                                        this.inverse().set_identity( 4,4 ) }, "orange" );
-      this.new_line();
+//       const speed_controls = this.control_panel.appendChild( document.createElement( "span" ) );
+//       speed_controls.style.margin = "30px";
+//       this.key_triggered_button( "-",  [ "o" ], () => 
+//                                             this.speed_multiplier  /=  1.2, "green", undefined, undefined, speed_controls );
+//       this.live_string( box => { box.textContent = "Speed: " + this.speed_multiplier.toFixed(2) }, speed_controls );
+//       this.key_triggered_button( "+",  [ "p" ], () => 
+//                                             this.speed_multiplier  *=  1.2, "green", undefined, undefined, speed_controls );
+//       this.new_line();
+//       this.key_triggered_button( "Roll left",  [ "," ], () => this.roll =  1, undefined, () => this.roll = 0 );
+//       this.key_triggered_button( "Roll right", [ "." ], () => this.roll = -1, undefined, () => this.roll = 0 );
+//       this.new_line();
+//       this.key_triggered_button( "(Un)freeze mouse look around", [ "f" ], () => this.look_around_locked ^=  1, "green" );
+//       this.new_line();
+//       this.live_string( box => box.textContent = "Position: " + this.pos[0].toFixed(2) + ", " + this.pos[1].toFixed(2) 
+//                                                        + ", " + this.pos[2].toFixed(2) );
+//       this.new_line();
+//                                                   // The facing directions are surprisingly affected by the left hand rule:
+//       this.live_string( box => box.textContent = "Facing: " + ( ( this.z_axis[0] > 0 ? "West " : "East ")
+//                    + ( this.z_axis[1] > 0 ? "Down " : "Up " ) + ( this.z_axis[2] > 0 ? "North" : "South" ) ) );
+//       this.new_line();
+//       this.key_triggered_button( "Go to world origin", [ "r" ], () => { this. matrix().set_identity( 4,4 );
+//                                                                         this.inverse().set_identity( 4,4 ) }, "orange" );
+//       this.new_line();
 
-      this.key_triggered_button( "Look at origin from front", [ "1" ], () =>
-        { this.inverse().set( Mat4.look_at( Vec.of( 0,0,10 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) ) );
-          this. matrix().set( Mat4.inverse( this.inverse() ) );
-        }, "black" );
-      this.new_line();
-      this.key_triggered_button( "from right", [ "2" ], () =>
-        { this.inverse().set( Mat4.look_at( Vec.of( 10,0,0 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) ) );
-          this. matrix().set( Mat4.inverse( this.inverse() ) );
-        }, "black" );
-      this.key_triggered_button( "from rear", [ "3" ], () =>
-        { this.inverse().set( Mat4.look_at( Vec.of( 0,0,-10 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) ) );
-          this. matrix().set( Mat4.inverse( this.inverse() ) );
-        }, "black" );   
-      this.key_triggered_button( "from left", [ "4" ], () =>
-        { this.inverse().set( Mat4.look_at( Vec.of( -10,0,0 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) ) );
-          this. matrix().set( Mat4.inverse( this.inverse() ) );
-        }, "black" );
-      this.new_line();
-      this.key_triggered_button( "Attach to global camera", [ "Shift", "R" ],
-                                                 () => { this.will_take_over_graphics_state = true }, "blue" );
-      this.new_line();
+//       this.key_triggered_button( "Look at origin from front", [ "1" ], () =>
+//         { this.inverse().set( Mat4.look_at( Vec.of( 0,0,10 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) ) );
+//           this. matrix().set( Mat4.inverse( this.inverse() ) );
+//         }, "black" );
+//       this.new_line();
+//       this.key_triggered_button( "from right", [ "2" ], () =>
+//         { this.inverse().set( Mat4.look_at( Vec.of( 10,0,0 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) ) );
+//           this. matrix().set( Mat4.inverse( this.inverse() ) );
+//         }, "black" );
+//       this.key_triggered_button( "from rear", [ "3" ], () =>
+//         { this.inverse().set( Mat4.look_at( Vec.of( 0,0,-10 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) ) );
+//           this. matrix().set( Mat4.inverse( this.inverse() ) );
+//         }, "black" );   
+//       this.key_triggered_button( "from left", [ "4" ], () =>
+//         { this.inverse().set( Mat4.look_at( Vec.of( -10,0,0 ), Vec.of( 0,0,0 ), Vec.of( 0,1,0 ) ) );
+//           this. matrix().set( Mat4.inverse( this.inverse() ) );
+//         }, "black" );
+//       this.new_line();
+//       this.key_triggered_button( "Attach to global camera", [ "Shift", "R" ],
+//                                                  () => { this.will_take_over_graphics_state = true }, "blue" );
+//       this.new_line();
     }
   first_person_flyaround( radians_per_frame, meters_per_frame, leeway = 70 )
     {                                                     // (Internal helper function)
