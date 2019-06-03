@@ -92,6 +92,7 @@ class Solar_System extends Scene
 
                                                 // TODO (#1):  Complete this list with any additional shapes you need.
       this.shapes = { 'box' : new Cube(),
+                   'ground' : new Cube(),
                    'ball_4' : new Subdivision_Sphere( 4 ),
                      'star' : new Planar_Star(),
                  'cylinder' : new Capped_Cylinder(100,100, [0,10]),
@@ -99,6 +100,8 @@ class Solar_System extends Scene
                     'square': new Square(),
                   'triangle': new Triangle(),
                   'tetrahedron': new Tetrahedron(false) };
+      this.shapes.ground.arrays.texture_coord.forEach( coord => coord.scale(50));
+
 
       this.bodies = [];
       this.obstacles = [];
@@ -132,6 +135,8 @@ class Solar_System extends Scene
 
       this.materials = { plastic: new Material( phong_shader, 
                                     { ambient: 1, diffusivity: 1, specularity: 0, color: Color.of( 1,.5,1,1 ) } ),
+                              hp: new Material( phong_shader, 
+                                    { ambient: 1, diffusivity: 1, specularity: 0, color: Color.of( 1,.5,1,1 ) } ),
                    plastic_stars: new Material( texture_shader_2,    
                                     { texture: new Texture( "assets/stars.png" ),
                                       ambient: 0, diffusivity: 1, specularity: 0, color: Color.of( .4,.4,.4,1 ) } ),
@@ -142,7 +147,11 @@ class Solar_System extends Scene
                                       ambient: 0, diffusivity: 1, specularity: 1, color: Color.of( .4,.4,.4,1 ) } ),
                         brick: new Material( texture_shader_2,    
                                     { texture: new Texture( "assets/bricks.png"),
-                                      ambient: 0.3, diffusivity: 1, specularity: 0 , color: Color.of( 1,1,1,1 ), smoothness: 10} ),
+                                      ambient: 0.3, diffusivity: 0, specularity: 0 , color: Color.of( 1,1,1,1 ), smoothness: 10} ),
+
+                        leaves: new Material( texture_shader_2,    
+                                    { texture: new Texture( "assets/leaves.jpg"),
+                                      ambient: .5, diffusivity: 0, specularity: 0 , color: Color.of( .2,.8,.2,1 ), smoothness: 10} ),
                       black_hole: new Material( black_hole_shader ),
                              sun: new Material( sun_shader, { ambient: 1, color: Color.of( 0,0,0,1 ) } ),
                                skybox_zneg : new Material( texture_shader_2,
@@ -166,14 +175,16 @@ class Solar_System extends Scene
                        text_box : new Material( texture_shader_2,
                                     { texture: new Texture("assets/textBox.jpeg"),
                                       ambient: 0.6, diffusivity: 1, specularity: 0.5, color: Color.of(.4,.4,.4,1) }),
-                           stop_sign: new Material( texture_shader_2,
-                                    { texture: new Texture("assets/stop.jpg"),
-                                      ambient: 0.6, diffusivity: 0.5, specularity: 1, color: Color.of(.4, .4, .4,1)})                              
                        };
 
-     this.sounds = { blast : new Audio('assets/blast.wav'),
-                      drift : new Audio('assets/carDrifting.wav'),
-                 accelerate : new Audio('assets/m3_accelerate.aiff')};              
+                                  // Some setup code that tracks whether the "lights are on" (the stars), and also
+                                  // stores 30 random location matrices for drawing stars behind the solar system:
+      this.lights_on = false;
+      this.star_matrices = [];
+      for( let i=0; i<30; i++ )
+        this.star_matrices.push( Mat4.rotation( Math.PI/2 * (Math.random()-.5), Vec.of( 0,1,0 ) )
+                         .times( Mat4.rotation( Math.PI/2 * (Math.random()-.5), Vec.of( 1,0,0 ) ) )
+                         .times( Mat4.translation([ 0,0,-150 ]) ) );
 
       this.thrust = Vec.of( 0,0,0 );
       this.model_transform = Mat4.identity();
@@ -189,7 +200,7 @@ class Solar_System extends Scene
 //       this.bodies.push(new Body(this.player_shape, this.materials.plastic, Vec.of(1,1,1))
 //                  .emplace(Mat4.identity().times (Mat4.scale([0.5,0.5,1])),0,0));
 
-      this.bodies.push(new Body(this.shapes.box, this.materials.plastic, Vec.of(1,1,1))
+      this.obstacles.push(new Body(this.shapes.box, this.materials.plastic, Vec.of(1,1,1))
                  .emplace(Mat4.identity().times(Mat4.translation([0,0,-10])),0,0));
 
       this.count = 0;
@@ -219,14 +230,14 @@ class Solar_System extends Scene
                                  // TODO (#5b): Add a button control.  Provide a callback that flips the boolean value of "this.lights_on".
        // this.key_triggered_button(  thrust[1]=1; 
       this.key_triggered_button( "Reverse",     [ "ArrowDown" ], () => this.acceleration = -0.03, undefined, () => this.acceleration = 0.01 );
-      this.key_triggered_button( "Accelerate",[ "w" ], () => this.acceleration = 0.05, undefined, () => this.acceleration = -0.01 );
+      this.key_triggered_button( "Accelerate",[ "ArrowUp" ], () => this.acceleration = 0.05, undefined, () => this.acceleration = -0.01 );
       this.new_line();
-      this.key_triggered_button( "Move Left",   [ "ArrowLeft" ], () => this.thrust[0] =  -10, undefined, () => this.thrust[0] = 0 );
+      this.key_triggered_button( "Move Left",   [ "a" ], () => this.thrust[0] =  -10, undefined, () => this.thrust[0] = 0 );
       //this.key_triggered_button( "Back",   [ "s" ], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0 );
-      this.key_triggered_button( "Move Right",  [ "ArrowRight" ], () => this.thrust[0] = 10, undefined, () => this.thrust[0] = 0 );
+      this.key_triggered_button( "Move Right",  [ "d" ], () => this.thrust[0] = 10, undefined, () => this.thrust[0] = 0 );
       
-      this.key_triggered_button( "Turn Right",  [ "d" ], () => this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1])).post_multiply(Mat4.rotation(-0.05,Vec.of(0,1,0))).post_multiply(Mat4.scale([0.5,0.5,1])), undefined, () => this.model_transform = this.model_transform );
-      this.key_triggered_button( "Turn Left",  [ "a" ], () => this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1])).post_multiply(Mat4.rotation(0.05,Vec.of(0,1,0))).post_multiply(Mat4.scale([0.5,0.5,1])), undefined, () => this.model_transform = this.model_transform );
+      this.key_triggered_button( "Turn Right",  [ "ArrowRight" ], () => this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1])).post_multiply(Mat4.rotation(-0.05,Vec.of(0,1,0))).post_multiply(Mat4.scale([0.5,0.5,1])), undefined, () => this.model_transform = this.model_transform );
+      this.key_triggered_button( "Turn Left",  [ "ArrowLeft" ], () => this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1])).post_multiply(Mat4.rotation(0.05,Vec.of(0,1,0))).post_multiply(Mat4.scale([0.5,0.5,1])), undefined, () => this.model_transform = this.model_transform );
       this.key_triggered_button( "Start",  [ "s" ], () => this.game_start = 1);
 
       this.key_triggered_button( "TPP/FPP",  [ "p" ], () => this.perspective = !this.perspective);
@@ -269,7 +280,7 @@ class Solar_System extends Scene
       //console.log(this.obstacles);
       //collision detection
         this.bodies[0].inverse = Mat4.inverse( this.bodies[0].drawn_location );
-        for( let b of this.bodies )                                      
+        for( let b of this.obstacles )                                      
         {                               // Pass the two bodies and the collision shape to check_if_colliding():
           if( !this.bodies[0].check_if_colliding( b, this.collider ) ){
             continue;
@@ -347,7 +358,7 @@ class Solar_System extends Scene
           //draw health bar
           let hp_tranform = program_state.camera_transform.times(Mat4.translation([0,3,-10]))
                                                        .times(Mat4.scale([this.hp,0.2,0.2]));
-          this.shapes.box.draw(context,program_state,hp_tranform,this.materials.metal.override( this.hp_color ));
+          this.shapes.box.draw(context,program_state,hp_tranform,this.materials.plastic.override( this.hp_color ));
         }else{
           //first person view
           const desired_camera = Mat4.inverse( this.bodies[0].drawn_location.times(Mat4.scale([1/.25,1/0.08,1/.6])).times( Mat4.translation( [ 0,3,0 ] ) )) ;
@@ -360,15 +371,15 @@ class Solar_System extends Scene
           this.shapes.box.draw(context,program_state,hp_tranform,this.materials.metal.override( this.hp_color ));
         }    
       }
-      this.bodies[1].shape.draw(context,program_state,this.bodies[1].drawn_location, this.bodies[1].material.override(blue)); 
+      this.obstacles[0].shape.draw(context,program_state,this.obstacles[0].drawn_location, this.obstacles[0].material.override(blue)); 
       this.lasttime=program_state.animation_time;
       
       
       let ground_transformation = _this.model_transform.times(Mat4.scale([100,0.1,100]));
-      _this.shapes.box.draw( context, program_state, ground_transformation, _this.materials.plastic.override( ground ) );
+      _this.shapes.ground.draw( context, program_state, ground_transformation, _this.materials.brick );
 
       draw_road();
-      draw_car(this.bodies[0], Mat4.identity());
+      draw_car(this.bodies[0]);
       draw_skybox(Mat4.identity());
       
       ////outer buildings/////
@@ -536,8 +547,8 @@ class Solar_System extends Scene
         let body_transform = base_transformation.times(Mat4.scale([width,height,depth]));
 
         let m_body = new Body(_this.shapes.box, _this.materials.plastic.override( building_color), Vec.of(1,1,1)).emplace(body_transform, 0, 0);
-        if(_this.first_frame)
-          _this.bodies.push(m_body);
+//         if(_this.first_frame)
+//           _this.obstacles.push(m_body);
         m_body.shape.draw( context, program_state, body_transform, m_body.material);
         
 
@@ -564,8 +575,8 @@ class Solar_System extends Scene
 
         let body_transform = base_transformation.times(Mat4.scale([x,z,height])); 
         let m_body = new Body(_this.shapes.cylinder, _this.materials.plastic.override( building_color), Vec.of(1,1,1)).emplace(body_transform, 0, 0);
-        if(_this.first_frame)
-          _this.bodies.push(m_body);
+//         if(_this.first_frame)
+//           _this.obstacles.push(m_body);
         m_body.shape.draw( context, program_state, body_transform, m_body.material);
 
 //         _this.shapes.cylinder.draw( context, program_state, body_transform, _this.materials.plastic.override( building_color ) );
@@ -752,18 +763,24 @@ class Solar_System extends Scene
 
       function draw_tree(model_transform)
       {
+
+        
         model_transform = model_transform.times(Mat4.translation([0,.8,0])).times(Mat4.scale([0.2,0.2,0.2]));
         let base_transform = model_transform.times( Mat4.rotation( Math.PI/2, [1,0,0]))
                                             .times( Mat4.scale([1,1,8]));
+        let m_body = new Body(_this.shapes.cylinder, _this.materials.plastic.override( brown), Vec.of(1,1,1)).emplace(base_transform, 0, 0);
+        if(_this.first_frame)
+          _this.obstacles.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
         
-        _this.shapes.cylinder.draw(context, program_state, base_transform, _this.materials.plastic.override( brown ));
+       // _this.shapes.cylinder.draw(context, program_state, base_transform, _this.materials.plastic.override( brown ));
 
         let leaf_transform = model_transform.times( Mat4.translation([0,8,0]))
                                             .times( Mat4.scale([4,4,4]))
-        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([0,.1,0])), _this.materials.plastic.override(green ));
-        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([0.6,-2/3,0])), _this.materials.plastic.override( green));
-        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([-0.6,-2/3,-0.6])), _this.materials.plastic.override( green));
-        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([-0.6,-2/3,0.6])), _this.materials.plastic.override( green));                                    
+        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([0,.1,0])), _this.materials.leaves);
+        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([0.6,-2/3,0])), _this.materials.leaves);
+        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([-0.6,-2/3,-0.6])), _this.materials.leaves);
+        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([-0.6,-2/3,0.6])), _this.materials.leaves);                                    
       }
       
       function draw_pinetree( model_transform)
@@ -774,20 +791,20 @@ class Solar_System extends Scene
         
         _this.shapes.cylinder.draw(context, program_state, base_transform, _this.materials.plastic.override( brown ));
 
-        let leaf_transform = model_transform.times( Mat4.translation([0,10,0]))
+        let leaf_transform = model_transform.times( Mat4.translation([0,8,0]))
                                             .times( Mat4.rotation(2.17, [1,0,-1]))
                                             .times( Mat4.scale([10,10,10]))
-        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform, _this.materials.plastic.override( green));
+        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform, _this.materials.leaves);
 
-        let leaf_transform2 = model_transform.times( Mat4.translation([0,13,0]))
+        let leaf_transform2 = model_transform.times( Mat4.translation([0,11,0]))
                                             .times( Mat4.rotation(2.17, [1,0,-1]))
                                             .times( Mat4.scale([8,8,8]))
-        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform2, _this.materials.plastic.override( green));
+        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform2, _this.materials.leaves);
                                             
-       let leaf_transform3 = model_transform.times( Mat4.translation([0,15,0]))
+       let leaf_transform3 = model_transform.times( Mat4.translation([0,13,0]))
                                             .times( Mat4.rotation(2.17, [1,0,-1]))
                                             .times( Mat4.scale([6,6, 6]))
-        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform3, _this.materials.plastic.override( green));
+        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform3, _this.materials.leaves);
       }
 
       function draw_skybox( model_transform)
@@ -818,30 +835,8 @@ class Solar_System extends Scene
                                           .times( Mat4.rotation(Math.PI/2, [1,0,0]))
         _this.shapes.square.draw(context, program_state, down_transform, _this.materials.skybox_yneg);                                                                                                                                                                                  
       }
-
-      function play_sound( name, volume = 1 )
-      { 
-        if( 0 < _this.sounds[ name ].currentTime && _this.sounds[ name ].currentTime < .3 ) return;
-        _this.sounds[ name ].currentTime = 0;
-        _this.sounds[ name ].volume = Math.min(Math.max(volume, 0), 1);
-        _this.sounds[ name ].play();
-      }
       
-
-      function draw_stopsign(context, program_state, model_transform)
-      {
-        let bar_transform = model_transform.times( Mat4.rotation(Math.PI/2, [1,0,0]))
-                                           .times( Mat4.scale([.2,.2,10]))
-        _this.shapes.cylinder.draw(context, program_state, bar_transform, _this.materials.metal.override( darkgray ));
-        let sign_transform = model_transform.times( Mat4.translation([0,5,.2]))
-                                            .times( Mat4.scale([1.5,1.5,1.5]))
-
-        _this.shapes.square.draw(context, program_state, sign_transform, _this.materials.stop_sign);
-
-
-      }
-
-
+      
      
     }
 
