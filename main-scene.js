@@ -317,7 +317,6 @@ class Solar_System extends Scene
         for( let b of this.bodies )                                      
         {                               // Pass the two bodies and the collision shape to check_if_colliding():
           if(a.check_if_colliding( b, this.off_road_collider ) ){
-            console.log("Here");
             this.off_road = 0;
             break;
           }
