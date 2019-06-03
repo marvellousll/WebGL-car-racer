@@ -2,19 +2,8 @@ import {tiny, defs} from './assignment-4-resources.js';
                                                                 // Pull these names into this module's scope for convenience:
 const { Vec, Mat, Mat4, Color, Light, Shape, Shader, Material, Texture,
          Scene, Canvas_Widget, Code_Widget, Text_Widget } = tiny;
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-const { Cube, Subdivision_Sphere, Transforms_Sandbox_Base,  Capped_Cylinder, Tetrahedron, Torus, Square, Triangle  } = defs;
-=======
+
 const { Cube, Subdivision_Sphere, Transforms_Sandbox_Base, Torus, Square, Triangle, Capped_Cylinder, Tetrahedron } = defs;
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
-const { Cube, Subdivision_Sphere, Transforms_Sandbox_Base, Torus, Square, Triangle, Capped_Cylinder, Tetrahedron } = defs;
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
-const { Cube, Subdivision_Sphere, Transforms_Sandbox_Base, Torus, Square, Triangle, Capped_Cylinder, Tetrahedron } = defs;
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
 
     // Now we have loaded everything in the files tiny-graphics.js, tiny-graphics-widgets.js, and assignment-4-resources.js.
     // This yielded "tiny", an object wrapping the stuff in the first two files, and "defs" for wrapping all the rest.
@@ -106,23 +95,6 @@ class Solar_System extends Scene
       this.shapes = { 'cube' : new Cube(),
                    'ball_4' : new Subdivision_Sphere( 4 ),
                      'star' : new Planar_Star(),
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                 'cylinder' : new Capped_Cylinder(100,100, [0,10]),
-                 'torus': new Torus(100,100,[0,10]),
-                    'square': new Square(),
-                  'triangle': new Triangle(),
-                  'tetrahedron': new Tetrahedron(false) };
-
-      this.bodies = [];
-      this.obstacles = [];
-      this.collider = { intersect_test: Body.intersect_cube, points: new defs.Subdivision_Sphere(2), leeway: .3 };
-=======
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
                      'torus': new Torus(100,100,[0,10]),
                     'square': new Square(),
                   'triangle': new Triangle(),
@@ -133,19 +105,11 @@ class Solar_System extends Scene
       
       this.sounds = { blast : new Audio('assets/blast.wav'),
                       drift : new Audio('assets/carDrifting.wav'),
-                 accelerate : new Audio('assets/m3_accelerate.aiff')};            
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
+                 accelerate : new Audio('assets/m3_accelerate.aiff')};
 
-                                                        // TODO (#1d): Modify one sphere shape's existing texture 
-                                                        // coordinates in place.  Multiply them all by 5.
-      // this.shapes.ball_repeat.arrays.texture_coord.forEach( coord => coord
-      
+      this.bodies = [];
+      this.obstacles = [];
+      this.collider = { intersect_test: Body.intersect_cube, points: new defs.Subdivision_Sphere(2), leeway: .3 };            
                                                               // *** Shaders ***
 
                                                               // NOTE: The 2 in each shader argument refers to the max
@@ -183,19 +147,7 @@ class Solar_System extends Scene
                                       ambient: 0.3, diffusivity: 1, specularity: 0 , color: Color.of( 1,1,1,1 ), smoothness: 10} ),
                       black_hole: new Material( black_hole_shader ),
                              sun: new Material( sun_shader, { ambient: 1, color: Color.of( 0,0,0,1 ) } ),
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-                               skybox_zneg : new Material( texture_shader_2,
-=======
                        skybox_zneg : new Material( texture_shader_2,
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
-                       skybox_zneg : new Material( texture_shader_2,
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
-                       skybox_zneg : new Material( texture_shader_2,
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
                                     { texture: new Texture("assets/zneg.jpeg"),
                                       ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
                        skybox_zpos : new Material( texture_shader_2,
@@ -213,29 +165,11 @@ class Solar_System extends Scene
                        skybox_yneg : new Material( texture_shader_2,
                                     { texture: new Texture("assets/yneg.jpeg"),
                                       ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
                        text_box : new Material( texture_shader_2,
                                     { texture: new Texture("assets/textBox.jpeg"),
                                       ambient: 0.6, diffusivity: 1, specularity: 0.5, color: Color.of(.4,.4,.4,1) }),
                        };
-=======
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-                          text_box : new Material( texture_shader_2,
-                                    { texture: new Texture("assets/textBox.jpeg"),
-                                      ambient: 0.6, diffusivity: 1, specularity: 0.5, color: Color.of(.4,.4,.4,1) })
-                             };
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
+
 
                                   // Some setup code that tracks whether the "lights are on" (the stars), and also
                                   // stores 30 random location matrices for drawing stars behind the solar system:
@@ -289,23 +223,13 @@ class Solar_System extends Scene
 
                                  // TODO (#5b): Add a button control.  Provide a callback that flips the boolean value of "this.lights_on".
        // this.key_triggered_button(  thrust[1]=1; 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
       this.key_triggered_button( "Reverse",     [ "ArrowDown" ], () => this.acceleration = -0.03, undefined, () => this.acceleration = 0.01 );
       this.key_triggered_button( "Accelerate",[ "w" ], () => this.acceleration = 0.05, undefined, () => this.acceleration = -0.01 );
-=======
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-      this.key_triggered_button( "Up",     [ " " ], () => this.thrust[1] = 1, undefined, () => this.thrust[1] = 0 );
       this.key_triggered_button( "Forward",[ "w" ], () => this.thrust[2] =  1, undefined, () => this.thrust[2] = 0 );
       this.new_line();
       this.key_triggered_button( "Left",   [ "a" ], () => this.thrust[0] =  -1, undefined, () => this.thrust[0] = 0 );
       this.key_triggered_button( "Back",   [ "s" ], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0 );
       this.key_triggered_button( "Right",  [ "d" ], () => this.thrust[0] = 1, undefined, () => this.thrust[0] = 0 );
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
       this.new_line();
       this.key_triggered_button( "Move Left",   [ "ArrowLeft" ], () => this.thrust[0] =  -10, undefined, () => this.thrust[0] = 0 );
       //this.key_triggered_button( "Back",   [ "s" ], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0 );
@@ -404,8 +328,6 @@ for(let a of this.bodies){
             }
             this.velocity = 0;
             this.perspective = 0;
-
-<<<<<<< HEAD
        }
       this.thrust[2]=-this.velocity;
       program_state.lights = [ new Light( Vec.of( 0,0,0,1 ), Color.of( 1,1,1,1 ), 100000 ) ];                        
@@ -415,8 +337,6 @@ for(let a of this.bodies){
       //this.shapes.box.draw(context,program_state,intro_transform,this.materials.plastic);
       this.shapes.square.draw(context, program_state, intro_transform, this.materials.text_box)
       let _this=this;
-      
-
       
 
 
@@ -442,8 +362,6 @@ for(let a of this.bodies){
           const desired_camera = Mat4.inverse( this.bodies[0].drawn_location.times(Mat4.scale([1/.25,1/0.08,1/.6])).times( Mat4.translation( [ 0,3,0 ] ) )) ;
           const dt = program_state.animation_delta_time;
           program_state.set_camera( desired_camera.map( (x,i) => Vec.from( program_state.camera_inverse[i] ).mix( x, .003*dt ) ) );
-
-<<<<<<< HEAD
           //draw health bar
           let hp_tranform = program_state.camera_transform.times(Mat4.translation([0,3,-10]))
                                                        .times(Mat4.scale([this.hp,0.2,0.2]));
@@ -528,8 +446,6 @@ for(let a of this.bodies){
 
       building_transformation_outer.post_multiply(Mat4.translation([7,0,7]));
       draw_building_2( building_transformation_outer,3,6,3, white, red);
-
-<<<<<<< HEAD
       
 
 
@@ -846,11 +762,6 @@ for(let a of this.bodies){
         model_transform = model_transform.times(Mat4.translation([0,.8,0])).times(Mat4.scale([0.2,0.2,0.2]));
         let base_transform = model_transform.times( Mat4.rotation( Math.PI/2, [1,0,0]))
                                             .times( Mat4.scale([1,1,8]));
-=======
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
       const wheat = Color.of(0.960784, 0.870588, 0.701961, 1), papayawhip = Color.of(1, 0.937255, 0.835294, 1), cyan = Color.of(0,1,1,1);
       const darkgray = Color.of(0.662745, 0.662745, 0.662745, 1), gold = Color.of(1, 0.843137, 0, 1), brown = Color.of(0.823529, 0.411765, 0.117647, 1 );
       
@@ -1001,21 +912,11 @@ for(let a of this.bodies){
       {
         let base_transform = model_transform.times( Mat4.rotation( Math.PI/2, [1,0,0]))
                                             .times( Mat4.scale([1,1,20]));
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
         
         _this.shapes.cylinder.draw(context, program_state, base_transform, _this.materials.plastic.override( brown ));
 
         let leaf_transform = model_transform.times( Mat4.translation([0,8,0]))
                                             .times( Mat4.scale([4,4,4]))
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
         _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([0,.1,0])), _this.materials.plastic.override(green ));
         _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([0.6,-2/3,0])), _this.materials.plastic.override( green));
         _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([-0.6,-2/3,-0.6])), _this.materials.plastic.override( green));
@@ -1069,12 +970,8 @@ for(let a of this.bodies){
                                           .times( Mat4.scale([100,100,100]))
                                           .times( Mat4.rotation(Math.PI/2, [-1,0,0]))
         _this.shapes.square.draw(context, program_state, up_transform, _this.materials.skybox_ypos);
+        
         let down_transform = model_transform.times( Mat4.translation([0,-140,0]))
-=======
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
         _this.shapes.ball_4.draw(context, program_state, leaf_transform, _this.materials.plastic.override( Color.of(0,1,0,1) ));
         _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([0.6,-2/3,0])), _this.materials.plastic.override( Color.of(0,1,0,1)));
         _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([-0.6,-2/3,-0.6])), _this.materials.plastic.override( Color.of(0,1,0,1)));
@@ -1132,44 +1029,15 @@ for(let a of this.bodies){
                                           .times( Mat4.rotation(Math.PI/2, [-1,0,0]))
         _this.shapes.square.draw(context, program_state, up_transform, _this.materials.skybox_ypos);
         let down_transform = model_transform.times( Mat4.translation([0,-100,0]))
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
                                           .times( Mat4.scale([100,100,100]))
                                           .times( Mat4.rotation(Math.PI/2, [1,0,0]))
         _this.shapes.square.draw(context, program_state, down_transform, _this.materials.skybox_yneg);                                                                                                                                                                                  
       }
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-      
-      
-     
-=======
 
       this.shapes.square.draw(context, program_state, model_transform.times( Mat4.scale([2,2,2])), this.materials.text_box);
 
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
 
-      this.shapes.square.draw(context, program_state, model_transform.times( Mat4.scale([2,2,2])), this.materials.text_box);
-
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
-
-      this.shapes.square.draw(context, program_state, model_transform.times( Mat4.scale([2,2,2])), this.materials.text_box);
-
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
     }
-
-
-  
- 
-   
 }
 
 
@@ -1363,70 +1231,7 @@ class Sun_Shader extends Shader
         context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat.flatten_2D_to_1D( PCM.transposed() ) );
         context.uniform1f ( gpu_addresses.time, program_state.animation_time / 1000 );
       }
-  shared_glsl_code()           
-<<<<<<< HEAD
-<<<<<<< HEAD
-    {
-      return `precision highp float;
-             
-      `;
-    }
-  vertex_glsl_code()           
-    {
-<<<<<<< HEAD
-                      // TODO (#EC 2): Pass the same information to the shader as for EC part 1.  Additionally
-                      // pass material.color to the shader.
-        const [ P, C, M ] = [ graphics_state.projection_transform, graphics_state.camera_inverse, model_transform ],
-                      PCM = P.times( C ).times( M );
-        context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat.flatten_2D_to_1D( PCM.transposed() ) );
-        context.uniform1f ( gpu_addresses.animation_time, graphics_state.animation_time / 1000 ); 
-        context.uniform4fv( gpu_addresses.sun_color,    material.color       ); 
-        context.uniform1f( gpu_addresses.brightness,    .82       ); 
-        context.uniform1f( gpu_addresses.pulseHeight,    0.       ); 
-        context.uniform1f( gpu_addresses.fireSpeed,    2.       );
-        context.uniform1f( gpu_addresses.turbulenceDetail,    .63       );      
-=======
-=======
-    {
-      return `precision highp float;
-             
-      `;
-    }
-  vertex_glsl_code()           
-    {
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
-    {
-      return `precision highp float;
-             
-      `;
-    }
-  vertex_glsl_code()           
-    {
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-                          
-      return this.shared_glsl_code() + `
-        precision highp int;
 
-        uniform mat4 projection_camera_model_transform;
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-
-        // Default attributes provided by THREE.js. Attributes are only available in the
-        // vertex shader. You can pass them to the fragment shader using varyings
-        attribute vec3 position;
-        attribute vec3 normal;
-        attribute vec2 uv;
-        attribute vec2 uv2;
-
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
   shared_glsl_code()            // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
     { return `precision mediump float;
               varying float disp; 
@@ -1593,104 +1398,5 @@ class Sun_Shader extends Shader
            gl_FragColor = vec4( color.rgb, 1.0 );
            gl_FragColor *= sun_color;
       }` ;
-=======
-        // Examples of variables passed from vertex to fragment shader
-        varying vec3 vPosition;
-        varying vec3 vNormal;
-        varying vec2 vUv;
-        varying vec2 vUv2;
-
-        void main() {
-
-            // To pass variables to the fragment shader, you assign them here in the
-            // main function. Traditionally you name the varying with vAttributeName
-            vNormal = normal;
-            vUv = uv;
-            vUv2 = uv2;
-            vPosition = position;
-
-=======
-        // Examples of variables passed from vertex to fragment shader
-        varying vec3 vPosition;
-        varying vec3 vNormal;
-        varying vec2 vUv;
-        varying vec2 vUv2;
-
-        void main() {
-
-            // To pass variables to the fragment shader, you assign them here in the
-            // main function. Traditionally you name the varying with vAttributeName
-            vNormal = normal;
-            vUv = uv;
-            vUv2 = uv2;
-            vPosition = position;
-
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
-        // Examples of variables passed from vertex to fragment shader
-        varying vec3 vPosition;
-        varying vec3 vNormal;
-        varying vec2 vUv;
-        varying vec2 vUv2;
-
-        void main() {
-
-            // To pass variables to the fragment shader, you assign them here in the
-            // main function. Traditionally you name the varying with vAttributeName
-            vNormal = normal;
-            vUv = uv;
-            vUv2 = uv2;
-            vPosition = position;
-
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-            // This sets the position of the vertex in 3d space. The correct math is
-            // provided below to take into account camera and object data.
-            gl_Position = projection_camera_model_transform * vec4( position, 1.0 );
-
-        }
-      `;
-    }
-  fragment_glsl_code()           
-    { 
-                         
-      return this.shared_glsl_code() + `
-        precision highp float;
-
-        varying vec2 vUv;
-        uniform float time;
-        const float speed = 8.0;
-        const float fadeAway = 0.5;
-        const vec3 color = vec3(0.8745, 0.5725, 0.0588);
-        const vec2 resolution = vec2(2,2);
-        const float uniformity = 10.0;
-        
-        void main(void) {
-            float t = time * speed;
-            vec2 position = (vUv.xy - resolution.xy * .5) / resolution.x;
-            float angle = atan(position.y, position.x) / (2. * 3.14159265359);
-            angle -= floor(angle);
-            float rad = length(position);
-            float angleFract = fract(angle * 256.);
-            float angleRnd = floor(angle * 256.) + 1.;
-            float angleRnd1 = fract(angleRnd * fract(angleRnd * .7235) * 45.1);
-            float angleRnd2 = fract(angleRnd * fract(angleRnd * .82657) * 13.724);
-            float t2 = t + angleRnd1 * uniformity;
-            float radDist = sqrt(angleRnd2);
-            float adist = radDist / rad * .1;
-            float dist = (t2 * .1 + adist);
-            dist = abs(fract(dist) - fadeAway);
-
-            float outputColor = (1.0 / (dist)) * cos(0.7 * sin(t)) * adist / radDist / 30.0;
-            angle = fract(angle + .61);
-            gl_FragColor = vec4(outputColor * color, 1.0);
-        }
-      `;
-<<<<<<< HEAD
-<<<<<<< HEAD
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
-=======
->>>>>>> 196d2e20a1fa109cc8ea86375b62f3c46eb59924
     }
 }
