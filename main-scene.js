@@ -2,8 +2,7 @@ import {tiny, defs} from './assignment-4-resources.js';
                                                                 // Pull these names into this module's scope for convenience:
 const { Vec, Mat, Mat4, Color, Light, Shape, Shader, Material, Texture,
          Scene, Canvas_Widget, Code_Widget, Text_Widget } = tiny;
-
-const { Cube, Subdivision_Sphere, Transforms_Sandbox_Base, Torus, Square, Triangle, Capped_Cylinder, Tetrahedron } = defs;
+const { Cube, Subdivision_Sphere, Transforms_Sandbox_Base,  Capped_Cylinder, Tetrahedron, Torus, Square, Triangle  } = defs;
 
     // Now we have loaded everything in the files tiny-graphics.js, tiny-graphics-widgets.js, and assignment-4-resources.js.
     // This yielded "tiny", an object wrapping the stuff in the first two files, and "defs" for wrapping all the rest.
@@ -92,24 +91,23 @@ class Solar_System extends Scene
                                                         // Don't define blueprints for shapes in display() every frame.
 
                                                 // TODO (#1):  Complete this list with any additional shapes you need.
-      this.shapes = { 'cube' : new Cube(),
+      this.shapes = { 'box' : new Cube(),
                    'ball_4' : new Subdivision_Sphere( 4 ),
                      'star' : new Planar_Star(),
-                     'torus': new Torus(100,100,[0,10]),
+                 'cylinder' : new Capped_Cylinder(100,100, [0,10]),
+                 'torus': new Torus(100,100,[0,10]),
                     'square': new Square(),
                   'triangle': new Triangle(),
-                  'cylinder': new Capped_Cylinder(100,100,[0,10]),
-                   'ball_6' : new Subdivision_Sphere( 6 ),
-              'tetrahedron' : new Tetrahedron( Boolean(false) ) };
-              
-      
-      this.sounds = { blast : new Audio('assets/blast.wav'),
-                      drift : new Audio('assets/carDrifting.wav'),
-                 accelerate : new Audio('assets/m3_accelerate.aiff')};
+                  'tetrahedron': new Tetrahedron(false) };
 
       this.bodies = [];
       this.obstacles = [];
-      this.collider = { intersect_test: Body.intersect_cube, points: new defs.Subdivision_Sphere(2), leeway: .3 };            
+      this.collider = { intersect_test: Body.intersect_cube, points: new defs.Subdivision_Sphere(2), leeway: .3 };
+
+                                                        // TODO (#1d): Modify one sphere shape's existing texture 
+                                                        // coordinates in place.  Multiply them all by 5.
+      // this.shapes.ball_repeat.arrays.texture_coord.forEach( coord => coord
+      
                                                               // *** Shaders ***
 
                                                               // NOTE: The 2 in each shader argument refers to the max
@@ -147,7 +145,7 @@ class Solar_System extends Scene
                                       ambient: 0.3, diffusivity: 1, specularity: 0 , color: Color.of( 1,1,1,1 ), smoothness: 10} ),
                       black_hole: new Material( black_hole_shader ),
                              sun: new Material( sun_shader, { ambient: 1, color: Color.of( 0,0,0,1 ) } ),
-                       skybox_zneg : new Material( texture_shader_2,
+                               skybox_zneg : new Material( texture_shader_2,
                                     { texture: new Texture("assets/zneg.jpeg"),
                                       ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
                        skybox_zpos : new Material( texture_shader_2,
@@ -168,17 +166,14 @@ class Solar_System extends Scene
                        text_box : new Material( texture_shader_2,
                                     { texture: new Texture("assets/textBox.jpeg"),
                                       ambient: 0.6, diffusivity: 1, specularity: 0.5, color: Color.of(.4,.4,.4,1) }),
+                           stop_sign: new Material( texture_shader_2,
+                                    { texture: new Texture("assets/stop.jpg"),
+                                      ambient: 0.6, diffusivity: 0.5, specularity: 1, color: Color.of(.4, .4, .4,1)})                              
                        };
 
-
-                                  // Some setup code that tracks whether the "lights are on" (the stars), and also
-                                  // stores 30 random location matrices for drawing stars behind the solar system:
-      this.lights_on = false;
-      this.star_matrices = [];
-      for( let i=0; i<30; i++ )
-        this.star_matrices.push( Mat4.rotation( Math.PI/2 * (Math.random()-.5), Vec.of( 0,1,0 ) )
-                         .times( Mat4.rotation( Math.PI/2 * (Math.random()-.5), Vec.of( 1,0,0 ) ) )
-                         .times( Mat4.translation([ 0,0,-150 ]) ) );
+     this.sounds = { blast : new Audio('assets/blast.wav'),
+                      drift : new Audio('assets/carDrifting.wav'),
+                 accelerate : new Audio('assets/m3_accelerate.aiff')};              
 
       this.thrust = Vec.of( 0,0,0 );
       this.model_transform = Mat4.identity();
@@ -225,11 +220,6 @@ class Solar_System extends Scene
        // this.key_triggered_button(  thrust[1]=1; 
       this.key_triggered_button( "Reverse",     [ "ArrowDown" ], () => this.acceleration = -0.03, undefined, () => this.acceleration = 0.01 );
       this.key_triggered_button( "Accelerate",[ "w" ], () => this.acceleration = 0.05, undefined, () => this.acceleration = -0.01 );
-      this.key_triggered_button( "Forward",[ "w" ], () => this.thrust[2] =  1, undefined, () => this.thrust[2] = 0 );
-      this.new_line();
-      this.key_triggered_button( "Left",   [ "a" ], () => this.thrust[0] =  -1, undefined, () => this.thrust[0] = 0 );
-      this.key_triggered_button( "Back",   [ "s" ], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0 );
-      this.key_triggered_button( "Right",  [ "d" ], () => this.thrust[0] = 1, undefined, () => this.thrust[0] = 0 );
       this.new_line();
       this.key_triggered_button( "Move Left",   [ "ArrowLeft" ], () => this.thrust[0] =  -10, undefined, () => this.thrust[0] = 0 );
       //this.key_triggered_button( "Back",   [ "s" ], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0 );
@@ -276,30 +266,28 @@ class Solar_System extends Scene
       else if(this.acceleration == 0.01)
         this.velocity = Math.min(this.velocity,0);
       
-for(let a of this.bodies){
-         a.inverse = Mat4.inverse( a.drawn_location );
-  //         this.player_color = yellow;
-  //         this.player_material = this.materials.plastic;
+      //console.log(this.obstacles);
+      //collision detection
+        this.bodies[0].inverse = Mat4.inverse( this.bodies[0].drawn_location );
         for( let b of this.bodies )                                      
         {                               // Pass the two bodies and the collision shape to check_if_colliding():
-          if( !a.check_if_colliding( b, this.collider ) ){
+          if( !this.bodies[0].check_if_colliding( b, this.collider ) ){
             continue;
           }else{
-//             this.bodies[0].shape = this.shapes.ball_4;
-//             if(!this.count)
-//               this.bodies[0].drawn_location.post_multiply(Mat4.scale([1.5,1.5,1]));
-//             this.player_material = this.materials.sun;
-//             this.player_color = orange;
+            //this.bodies[0].shape = this.shapes.ball_4;
+            //if(!this.count)
+              //this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1]));
+            //this.bodies[0].material = this.materials.sun;
+            //this.bodies[0].material.color = orange;
+            //this.collide = 1;
 //             if(this.count!=100){
 //               this.count++;
 //               this.bodies[0].drawn_location.post_multiply(Mat4.scale([1.014,1.014,1.014]));
 //             }
             this.hp=Math.max(this.hp-0.01,0);
             this.velocity = Math.min(this.velocity, 0);
-//             this.perspective = 0;
           }
         }
-      }
       
       //velocity cap
       if(this.velocity > 0)
@@ -328,6 +316,7 @@ for(let a of this.bodies){
             }
             this.velocity = 0;
             this.perspective = 0;
+
        }
       this.thrust[2]=-this.velocity;
       program_state.lights = [ new Light( Vec.of( 0,0,0,1 ), Color.of( 1,1,1,1 ), 100000 ) ];                        
@@ -337,6 +326,8 @@ for(let a of this.bodies){
       //this.shapes.box.draw(context,program_state,intro_transform,this.materials.plastic);
       this.shapes.square.draw(context, program_state, intro_transform, this.materials.text_box)
       let _this=this;
+      
+
       
 
 
@@ -362,6 +353,7 @@ for(let a of this.bodies){
           const desired_camera = Mat4.inverse( this.bodies[0].drawn_location.times(Mat4.scale([1/.25,1/0.08,1/.6])).times( Mat4.translation( [ 0,3,0 ] ) )) ;
           const dt = program_state.animation_delta_time;
           program_state.set_camera( desired_camera.map( (x,i) => Vec.from( program_state.camera_inverse[i] ).mix( x, .003*dt ) ) );
+
           //draw health bar
           let hp_tranform = program_state.camera_transform.times(Mat4.translation([0,3,-10]))
                                                        .times(Mat4.scale([this.hp,0.2,0.2]));
@@ -446,6 +438,7 @@ for(let a of this.bodies){
 
       building_transformation_outer.post_multiply(Mat4.translation([7,0,7]));
       draw_building_2( building_transformation_outer,3,6,3, white, red);
+
       
 
 
@@ -543,8 +536,8 @@ for(let a of this.bodies){
         let body_transform = base_transformation.times(Mat4.scale([width,height,depth]));
 
         let m_body = new Body(_this.shapes.box, _this.materials.plastic.override( building_color), Vec.of(1,1,1)).emplace(body_transform, 0, 0);
-//         if(_this.first_frame)
-//           _this.bodies.push(m_body);
+        if(_this.first_frame)
+          _this.bodies.push(m_body);
         m_body.shape.draw( context, program_state, body_transform, m_body.material);
         
 
@@ -571,8 +564,8 @@ for(let a of this.bodies){
 
         let body_transform = base_transformation.times(Mat4.scale([x,z,height])); 
         let m_body = new Body(_this.shapes.cylinder, _this.materials.plastic.override( building_color), Vec.of(1,1,1)).emplace(body_transform, 0, 0);
-//         if(_this.first_frame)
-//           _this.bodies.push(m_body);
+        if(_this.first_frame)
+          _this.bodies.push(m_body);
         m_body.shape.draw( context, program_state, body_transform, m_body.material);
 
 //         _this.shapes.cylinder.draw( context, program_state, body_transform, _this.materials.plastic.override( building_color ) );
@@ -762,156 +755,6 @@ for(let a of this.bodies){
         model_transform = model_transform.times(Mat4.translation([0,.8,0])).times(Mat4.scale([0.2,0.2,0.2]));
         let base_transform = model_transform.times( Mat4.rotation( Math.PI/2, [1,0,0]))
                                             .times( Mat4.scale([1,1,8]));
-      const wheat = Color.of(0.960784, 0.870588, 0.701961, 1), papayawhip = Color.of(1, 0.937255, 0.835294, 1), cyan = Color.of(0,1,1,1);
-      const darkgray = Color.of(0.662745, 0.662745, 0.662745, 1), gold = Color.of(1, 0.843137, 0, 1), brown = Color.of(0.823529, 0.411765, 0.117647, 1 );
-      
-      program_state.lights = [ new Light( Vec.of( 0,0,0,1 ), Color.of( 1,1,1,1 ), 100000 ) ];                        
-      const modifier = this.lights_on ? { ambient: 0.3 } : { ambient: 0.0 };
-
-      let model_transform = Mat4.identity();
-      var _this = this;
-
-      function play_sound( name, volume = 1 )
-      { 
-        if( 0 < _this.sounds[ name ].currentTime && _this.sounds[ name ].currentTime < .3 ) return;
-        _this.sounds[ name ].currentTime = 0;
-        _this.sounds[ name ].volume = Math.min(Math.max(volume, 0), 1);
-        _this.sounds[ name ].play();
-      }
-
-
-      function draw_car(context, program_state, car_transform)
-      {
-          let base_transform = model_transform.times( Mat4.scale(Vec.of(2.5,0.8,8)) );
-          _this.shapes.cube.draw(context, program_state, base_transform, _this.materials.plastic.override( wheat ));
-
-          base_transform = base_transform.times( Mat4.scale(Vec.of(1/2.5, 1/0.8,1/8)) );
-
-          let wheel1_transform = base_transform.times( Mat4.translation([2.5,-1,-6]))
-                                               .times( Mat4.rotation(Math.PI/2, [0,1,0]))
-                                               .times( Mat4.scale(Vec.of(1,1,2)));
-
-          let wheel2_transform = base_transform.times( Mat4.translation([-2.5,-1,-6]))
-                                               .times( Mat4.rotation(Math.PI/2, [0,1,0]))
-                                               .times( Mat4.scale(Vec.of(1,1,2)));
-
-          let wheel3_transform = base_transform.times( Mat4.translation([2.5,-1,6]))
-                                               .times( Mat4.rotation(Math.PI/2, [0,1,0]))
-                                               .times( Mat4.scale(Vec.of(1,1,2)));  
-
-          let wheel4_transform = base_transform.times( Mat4.translation([-2.5,-1,6]))
-                                               .times( Mat4.rotation(Math.PI/2, [0,1,0]))
-                                               .times( Mat4.scale(Vec.of(1,1,2)));                                                                
-
-          _this.shapes.torus.draw(context, program_state, wheel1_transform, _this.materials.plastic.override( darkgray ));
-          _this.shapes.torus.draw(context, program_state, wheel2_transform, _this.materials.plastic.override( darkgray ));
-          _this.shapes.torus.draw(context, program_state, wheel3_transform, _this.materials.plastic.override( darkgray ));
-          _this.shapes.torus.draw(context, program_state, wheel4_transform, _this.materials.plastic.override( darkgray ));
-
-          let light1_transform = base_transform.times( Mat4.translation([1.8,1.3,7]))
-                                               .times( Mat4.scale(Vec.of(0.5,0.5,0.5)));
-          _this.shapes.square.draw(context, program_state, light1_transform, _this.materials.plastic.override( gold ));
-          let side1_transform = light1_transform.times( Mat4.scale(Vec.of(2,2,2)))
-                                                .times( Mat4.rotation(Math.PI/2, [0,1,0]))
-                                                .times( Mat4.translation([0,-0.5,-0.5]));
-          _this.shapes.triangle.draw(context, program_state, side1_transform, _this.materials.plastic.override( darkgray));
-          _this.shapes.triangle.draw(context, program_state, side1_transform.times( Mat4.translation([0,0,1])), _this.materials.plastic.override(darkgray));
-          let top1_transform = side1_transform.times( Mat4.scale(Vec.of(2,2,2)))
-                                              .times( Mat4.translation([.18,.33,.25]))
-                                              .times( Mat4.rotation(Math.PI/4, [0,0,-1]))
-                                              .times( Mat4.scale(Vec.of(0.4,0.05,0.25)));
-          _this.shapes.cube.draw(context, program_state, top1_transform, _this.materials.plastic.override( darkgray));
-
-          let light2_transform = base_transform.times( Mat4.translation([-1.8,1.3,7]))
-                                               .times( Mat4.scale(Vec.of(0.5,.5,.5)))
-          _this.shapes.square.draw(context, program_state, light2_transform, _this.materials.plastic.override( gold ));
-
-          let side2_transform = light2_transform.times( Mat4.scale(Vec.of(2,2,2)))
-                                                .times( Mat4.rotation(Math.PI/2, [0,1,0]))
-                                                .times( Mat4.translation([0,-0.5,-0.5]));
-          _this.shapes.triangle.draw(context, program_state, side2_transform, _this.materials.plastic.override( darkgray));
-          _this.shapes.triangle.draw(context, program_state, side2_transform.times( Mat4.translation([0,0,1])), _this.materials.plastic.override(darkgray));
-
-          let top2_transform = side2_transform.times( Mat4.scale(Vec.of(2,2,2)))
-                                              .times( Mat4.translation([.18,.33,.25]))
-                                              .times( Mat4.rotation(Math.PI/4, [0,0,-1]))
-                                              .times( Mat4.scale(Vec.of(0.4,0.05,0.25)));
-          _this.shapes.cube.draw(context, program_state, top2_transform, _this.materials.plastic.override( darkgray));
-
-          let window_transform = base_transform.times( Mat4.translation([2.5,.8,0]))
-                                               .times( Mat4.scale([2.5,2.5,2.5]))
-                                               .times( Mat4.rotation(Math.PI/2, [0,-1,0]));
-          _this.shapes.triangle.draw(context, program_state, window_transform, _this.materials.plastic.override( cyan ));
-          _this.shapes.triangle.draw(context, program_state, window_transform.times( Mat4.translation([0,0,2])), _this.materials.plastic.override( cyan ));
-
-          let window_transform2 = window_transform.times( Mat4.scale([1/2.5,1/2.5,1/2.5]))
-                                                  .times( Mat4.translation([-2,1.25,0]))
-                                                  .times( Mat4.scale([2,1.25,1]));
-          _this.shapes.square.draw(context, program_state, window_transform2, _this.materials.plastic.override( cyan ));
-          _this.shapes.square.draw(context, program_state, window_transform2.times( Mat4.translation([0,0,5])), _this.materials.plastic.override( cyan ));
-
-          let decor_transform1 = base_transform.times( Mat4.translation([2.5,2.05,0]))
-                                               .times( Mat4.rotation(Math.PI/2, [0,0,-1]))
-                                               .times( Mat4.scale([1.25,0.05,0.05]));
-
-                                                                                    
-          _this.shapes.cube.draw(context, program_state, decor_transform1, _this.materials.plastic.override( papayawhip));
-          _this.shapes.cube.draw(context, program_state, decor_transform1.times( Mat4.translation([0,-100,0])), _this.materials.plastic.override( papayawhip));
-
-          let decor_transform2 = base_transform.times( Mat4.translation([0,1.1,4.625]))
-                                               .times( Mat4.scale([1,0.3,3.375]))
-
-          _this.shapes.cube.draw(context, program_state, decor_transform2, _this.materials.plastic.override( papayawhip ));
-
-          let front_transform = base_transform.times( Mat4.translation([0,2.05,1.25]))
-                                              .times( Mat4.rotation(Math.PI/4, [-1,0,0]))
-                                              .times( Mat4.scale([2.5,1.767,1]));
-
-          _this.shapes.square.draw(context, program_state, front_transform, _this.materials.plastic.override( cyan ));
-
-          let seattop_transform = base_transform.times( Mat4.translation([0,3.35,-2]))
-                                                .times( Mat4.scale([2.5,0.05,2]))
-           
-          _this.shapes.cube.draw(context, program_state, seattop_transform, _this.materials.plastic.override( papayawhip)); 
-
-          let seatback_transform = base_transform.times( Mat4.translation([0,2.05,-4]))
-                                                 .times( Mat4.scale([2.5,1.25,0.05])) 
-           
-          _this.shapes.cube.draw(context, program_state, seatback_transform, _this.materials.plastic.override( papayawhip ));
-
-          let rear_transform = base_transform.times( Mat4.translation([0,1.3,-7.5]))
-                                             .times( Mat4.scale([2.5,.5,.5]))
-
-          _this.shapes.cube.draw(context, program_state, rear_transform, _this.materials.plastic.override( papayawhip )); 
-
-          let beam_transform = base_transform.times( Mat4.translation([2.5,2.05,1.25]))
-                                             .times( Mat4.rotation(Math.PI/4, [1,0,0]))
-                                             .times( Mat4.scale([0.05, 0.05,1.767]))
-
-          _this.shapes.cube.draw(context, program_state, beam_transform, _this.materials.plastic.override( papayawhip ));
-          _this.shapes.cube.draw(context, program_state, beam_transform.times( Mat4.translation([-100,0,0])), _this.materials.plastic.override( papayawhip ));
-
-          let mirror1_transform = base_transform.times( Mat4.translation([2.5,2.05,1.25]))
-                                                .times( Mat4.rotation(Math.PI/3, [1,0,0]))
-                                                .times( Mat4.rotation(Math.PI/6, [0,0,-1]))
-                                                .times( Mat4.translation([.6,0,0]))
-                                                .times( Mat4.scale([.6,.2,.4]))
-          _this.shapes.cube.draw(context, program_state, mirror1_transform, _this.materials.plastic.override( papayawhip ));
-
-          let mirror2_transform = base_transform.times( Mat4.translation([-2.5,2.05,1.25]))
-                                                .times( Mat4.rotation(Math.PI/3, [1,0,0]))
-                                                .times( Mat4.rotation(Math.PI/6, [0,0,1]))
-                                                .times( Mat4.translation([-.6,0,0]))
-                                                .times( Mat4.scale([.6,.2,.4]))
-
-           _this.shapes.cube.draw(context, program_state, mirror2_transform, _this.materials.plastic.override( papayawhip ));                                                                                                                                                                                 
-
-      }
-
-      function draw_tree( context, program_state, model_transform)
-      {
-        let base_transform = model_transform.times( Mat4.rotation( Math.PI/2, [1,0,0]))
-                                            .times( Mat4.scale([1,1,20]));
         
         _this.shapes.cylinder.draw(context, program_state, base_transform, _this.materials.plastic.override( brown ));
 
@@ -970,74 +813,42 @@ for(let a of this.bodies){
                                           .times( Mat4.scale([100,100,100]))
                                           .times( Mat4.rotation(Math.PI/2, [-1,0,0]))
         _this.shapes.square.draw(context, program_state, up_transform, _this.materials.skybox_ypos);
-        
         let down_transform = model_transform.times( Mat4.translation([0,-140,0]))
-        _this.shapes.ball_4.draw(context, program_state, leaf_transform, _this.materials.plastic.override( Color.of(0,1,0,1) ));
-        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([0.6,-2/3,0])), _this.materials.plastic.override( Color.of(0,1,0,1)));
-        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([-0.6,-2/3,-0.6])), _this.materials.plastic.override( Color.of(0,1,0,1)));
-        _this.shapes.ball_4.draw(context, program_state, leaf_transform.times( Mat4.translation([-0.6,-2/3,0.6])), _this.materials.plastic.override( Color.of(0,1,0,1)));                                    
-      }
-      
-      function draw_pinetree(context, program_state, model_transform)
-      {
-        let base_transform = model_transform.times( Mat4.rotation( Math.PI/2, [1,0,0]))
-                                            .times( Mat4.scale([1,1,12]));
-        
-        _this.shapes.cylinder.draw(context, program_state, base_transform, _this.materials.plastic.override( brown ));
-
-        let leaf_transform = model_transform.times( Mat4.translation([0,13,0]))
-                                            .times( Mat4.rotation(2.16, [1,0,-1]))
-                                            //.times( Mat4.rotation(Math.PI*3/4, [0,0,-1]))
-                                            //.times( Mat4.rotation(Math.PI/4, [-1,0,0]))
-                                            .times( Mat4.scale([10,10,10]))
-        _this.shapes.tetrahedron.draw(context, program_state, leaf_transform, _this.materials.plastic.override( Color.of(0,1,0,1)));
-
-        let leaf_transform2 = model_transform.times( Mat4.translation([0,16,0]))
-                                            .times( Mat4.rotation(Math.PI*3/4, [0,0,-1]))
-                                            .times( Mat4.rotation(Math.PI/4, [-1,0,0]))
-                                            .times( Mat4.scale([10,10,10]))
-        //_this.shapes.tetrahedron.draw(context, program_state, leaf_transform2, _this.materials.plastic.override( Color.of(0,1,0,1)));
-                                            
-       let leaf_transform3 = model_transform.times( Mat4.translation([0,20,0]))
-                                            .times( Mat4.rotation(Math.PI*3/4, [0,0,-1]))
-                                            .times( Mat4.rotation(Math.PI/4, [-1,0,0]))
-                                            .times( Mat4.scale([10,10,10]))
-        //_this.shapes.tetrahedron.draw(context, program_state, leaf_transform3, _this.materials.plastic.override( Color.of(0,1,0,1)));
-      }
-      
-      function draw_skybox( context, program_state, model_transform)
-      {
-        let front_transform = model_transform.times( Mat4.translation([0,0,-100]))
-                                             .times( Mat4.scale([100,100,100]))
-                                             .times( Mat4.rotation(Math.PI, [0,1,0]))
-        _this.shapes.square.draw(context, program_state, front_transform, _this.materials.skybox_zneg);
-        let back_transform = model_transform.times( Mat4.translation([0,0,100]))
-                                            .times( Mat4.scale([100,100,100]))
-        _this.shapes.square.draw(context, program_state, back_transform, _this.materials.skybox_zpos);
-
-        let right_transform = model_transform.times( Mat4.translation([100,0,0]))
-                                             .times( Mat4.scale([100,100,100]))
-                                             .times( Mat4.rotation(Math.PI/2, [0,1,0]))
-        _this.shapes.square.draw(context, program_state, right_transform, _this.materials.skybox_xpos);
-        let left_transform = model_transform.times( Mat4.translation([-100,0,0]))
-                                            .times( Mat4.scale([100,100,100]))
-                                            .times( Mat4.rotation(Math.PI/2, [0,-1,0]))
-        _this.shapes.square.draw(context, program_state, left_transform, _this.materials.skybox_xneg);
-
-        let up_transform = model_transform.times( Mat4.translation([0,100,0]))
-                                          .times( Mat4.scale([100,100,100]))
-                                          .times( Mat4.rotation(Math.PI/2, [-1,0,0]))
-        _this.shapes.square.draw(context, program_state, up_transform, _this.materials.skybox_ypos);
-        let down_transform = model_transform.times( Mat4.translation([0,-100,0]))
                                           .times( Mat4.scale([100,100,100]))
                                           .times( Mat4.rotation(Math.PI/2, [1,0,0]))
         _this.shapes.square.draw(context, program_state, down_transform, _this.materials.skybox_yneg);                                                                                                                                                                                  
       }
 
-      this.shapes.square.draw(context, program_state, model_transform.times( Mat4.scale([2,2,2])), this.materials.text_box);
+      function play_sound( name, volume = 1 )
+      { 
+        if( 0 < _this.sounds[ name ].currentTime && _this.sounds[ name ].currentTime < .3 ) return;
+        _this.sounds[ name ].currentTime = 0;
+        _this.sounds[ name ].volume = Math.min(Math.max(volume, 0), 1);
+        _this.sounds[ name ].play();
+      }
+      
+
+      function draw_stopsign(context, program_state, model_transform)
+      {
+        let bar_transform = model_transform.times( Mat4.rotation(Math.PI/2, [1,0,0]))
+                                           .times( Mat4.scale([.2,.2,10]))
+        _this.shapes.cylinder.draw(context, program_state, bar_transform, _this.materials.metal.override( darkgray ));
+        let sign_transform = model_transform.times( Mat4.translation([0,5,.2]))
+                                            .times( Mat4.scale([1.5,1.5,1.5]))
+
+        _this.shapes.square.draw(context, program_state, sign_transform, _this.materials.stop_sign);
 
 
+      }
+
+
+     
     }
+
+
+  
+ 
+   
 }
 
 
@@ -1220,17 +1031,26 @@ class Black_Hole_Shader extends Shader         // Simple "procedural" texture sh
     }
 }
 
+
 const Sun_Shader = defs.Sun_Shader =
 class Sun_Shader extends Shader
-{
-    update_GPU( context, gpu_addresses, program_state, model_transform, material )
-      { 
-        //super.update_GPU( context, gpu_addresses, gpu_state, model_transform, material );
-        const [ P, C, M ] = [ program_state.projection_transform, program_state.camera_inverse, model_transform ],
+{ update_GPU( context, gpu_addresses, graphics_state, model_transform, material )
+    {
+                      // TODO (#EC 2): Pass the same information to the shader as for EC part 1.  Additionally
+                      // pass material.color to the shader.
+        const [ P, C, M ] = [ graphics_state.projection_transform, graphics_state.camera_inverse, model_transform ],
                       PCM = P.times( C ).times( M );
         context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat.flatten_2D_to_1D( PCM.transposed() ) );
-        context.uniform1f ( gpu_addresses.time, program_state.animation_time / 1000 );
-      }
+        context.uniform1f ( gpu_addresses.animation_time, graphics_state.animation_time / 1000 ); 
+        context.uniform4fv( gpu_addresses.sun_color,    material.color       ); 
+        context.uniform1f( gpu_addresses.brightness,    .82       ); 
+        context.uniform1f( gpu_addresses.pulseHeight,    0.       ); 
+        context.uniform1f( gpu_addresses.fireSpeed,    2.       );
+        context.uniform1f( gpu_addresses.turbulenceDetail,    .63       );      
+
+    }
+                                // TODO (#EC 2):  Complete the shaders, displacing the input sphere's vertices as
+                                // a fireball effect and coloring fragments according to displacement.
 
   shared_glsl_code()            // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
     { return `precision mediump float;
