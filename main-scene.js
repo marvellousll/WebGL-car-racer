@@ -107,6 +107,7 @@ class Solar_System extends Scene
       this.roads = [];
       this.obstacles = [];
       this.collider = { intersect_test: Body.intersect_cube, points: new defs.Subdivision_Sphere(4), leeway: .05 };
+      this.off_road_collider = { intersect_test: Body.intersect_cube, points: new defs.Subdivision_Sphere(3), leeway: .4 };
 
                                                         // TODO (#1d): Modify one sphere shape's existing texture 
                                                         // coordinates in place.  Multiply them all by 5.
@@ -197,7 +198,7 @@ class Solar_System extends Scene
 //       this.player_color = Color.of(1,1,1,1);
 //       this.player_material = this.materials.plastic;
 
-      this.bodies.push(new Body(this.shapes.box, this.materials.plastic.override( Color.of(1,1,1,1)), Vec.of(1,1,1)).emplace(Mat4.identity().times(Mat4.translation([0,.5,0])).times(Mat4.scale([.25*0.5,0.08*0.5,.6*0.5]))));
+      this.bodies.push(new Body(this.shapes.box, this.materials.plastic.override( Color.of(1,1,1,1)), Vec.of(1,1,1)).emplace(Mat4.identity().times(Mat4.translation([0,0.295,0])).times(Mat4.scale([.25*0.5,0.08*0.5,.6*0.5]))));
 //       this.player_shape = this.shapes.box;
       
 //       this.bodies.push(new Body(this.player_shape, this.materials.plastic, Vec.of(1,1,1))
@@ -223,7 +224,7 @@ class Solar_System extends Scene
       //camera
       this.perspective = 0;
       this.overlook = 0;
-      
+      this.off_road = 1;
       
 
     }
@@ -281,7 +282,7 @@ class Solar_System extends Scene
       else if(this.acceleration == 0.01)
         this.velocity = Math.min(this.velocity,0);
       let _this=this;
-      draw_road();
+      
    //collision with obstacles
     for(let a of this.obstacles){
          a.inverse = Mat4.inverse( a.drawn_location );
@@ -296,20 +297,22 @@ class Solar_System extends Scene
         }
      }
       
-//       //off road detection
-//       for(let a of this.roads){
-//          a.inverse = Mat4.inverse( a.drawn_location );
-//         for( let b of this.bodies )                                      
-//         {                               // Pass the two bodies and the collision shape to check_if_colliding():
-//           if( a.check_if_colliding( b, this.collider ) ){
-//             continue;
-//           }else{
-//             this.hp=Math.max(this.hp-0.01,0);
-//             //this.velocity = Math.min(this.velocity, 0);
-//           }
-//         }
-//      }
-
+      //off road detection
+     for(let a of this.roads){
+         a.inverse = Mat4.inverse( a.drawn_location );
+        for( let b of this.bodies )                                      
+        {                               // Pass the two bodies and the collision shape to check_if_colliding():
+          if(a.check_if_colliding( b, this.off_road_collider ) ){
+            console.log("Here");
+            this.off_road = 0;
+            break;
+          }
+        }
+        if(!this.off_road) break;
+     }
+    if(this.off_road)
+        this.hp=Math.max(this.hp-0.01,0);
+    
       //velocity cap
       if(this.velocity > 0)
         this.velocity=Math.min(this.velocity, 15);
@@ -382,7 +385,7 @@ class Solar_System extends Scene
       let ground_transformation = _this.model_transform.times(Mat4.scale([100,0.1,100]));
       _this.shapes.ground.draw( context, program_state, ground_transformation, _this.materials.brick );
 
-      
+      draw_road();
       if(!this.collide)
         draw_car(this.bodies[0]);
       draw_skybox(Mat4.identity());
@@ -517,7 +520,7 @@ class Solar_System extends Scene
        building_transformation_inner.post_multiply(Mat4.translation([3,0,1]));
 
        this.first_frame = 0;
-
+       this.off_road = 1;
 
 
       ////car/////
@@ -599,73 +602,73 @@ class Solar_System extends Scene
         let road_transformation = road_base.times(Mat4.translation([0, 0, 0])).times(Mat4.scale([0.3,0.2,4.0]));
        
         let m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([4, 0, -3.7])).times(Mat4.scale([4,0.2,0.3]));
         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([7.7, 0, -3])).times(Mat4.scale([0.3,0.2,1]));
         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([8.4, 0, -2.3])).times(Mat4.scale([1,0.2,0.3]));
         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([9.1, 0, -1.6])).times(Mat4.scale([0.3,0.2,1]));
         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([9.8, 0, -.9])).times(Mat4.scale([1,0.2,0.3]));
          m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([10.5, 0, 6.6])).times(Mat4.scale([0.3,0.2,7.8]));
         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_base = road_base.times(Mat4.rotation(Math.PI, [1,0,1])).times(Mat4.translation([3.7, 0, -3.7]));
         road_transformation = road_base.times(Mat4.translation([0, 0, 0])).times(Mat4.scale([0.3,0.2,4.0]));
          m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([4, 0, -3.7])).times(Mat4.scale([4,0.2,0.3]));
          m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([7.7, 0, -3])).times(Mat4.scale([0.3,0.2,1]));
          m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([8.4, 0, -2.3])).times(Mat4.scale([1,0.2,0.3]));
          m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([9.1, 0, -1.6])).times(Mat4.scale([0.3,0.2,1]));
         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_transformation = road_base.times(Mat4.translation([9.8, 0, -.9])).times(Mat4.scale([1,0.2,0.3]));
          m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
         
          road_transformation = road_base.times(Mat4.translation([10.5, 0, 6.6])).times(Mat4.scale([0.3,0.2,7.8]));
          m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
-        _this.roads.push(m_body);
+        if(_this.first_frame) _this.roads.push(m_body);
         m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
       }
 
