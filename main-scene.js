@@ -130,9 +130,6 @@ class Solar_System extends Scene
                                                               // seemingly interact with the lights:
       const texture_shader_2  = new defs.Fake_Bump_Map (2);
                                                               // A Simple Gouraud Shader that you will implement:
-      const gouraud_shader    = new Gouraud_Shader     (2);
-                                                              // Extra credit shaders:
-      const black_hole_shader = new Black_Hole_Shader();
       const sun_shader        = new Sun_Shader();
       const flame_shader      = new Flame_Shader();
       
@@ -159,7 +156,6 @@ class Solar_System extends Scene
                         leaves: new Material( texture_shader_2,    
                                     { texture: new Texture( "assets/leaves.jpg"),
                                       ambient: .5, diffusivity: 0, specularity: 0 , color: Color.of( .2,.8,.2,1 ), smoothness: 10} ),
-                      black_hole: new Material( black_hole_shader ),
                              sun: new Material( sun_shader, { ambient: 1, color: Color.of( 0,0,0,1 ) } ),
                                flame: new Material( flame_shader, { ambient: 1, color: Color.of( 0,0,0,1 ) } ),
                                skybox_zneg : new Material( texture_shader_2,
@@ -183,6 +179,9 @@ class Solar_System extends Scene
                        text_box : new Material( texture_shader_2,
                                     { texture: new Texture("assets/textBox.jpeg"),
                                       ambient: 0.6, diffusivity: 1, specularity: 0.5, color: Color.of(.4,.4,.4,1) }),
+                        stop_sign: new Material( texture_shader_2,
+                                    { texture: new Texture("assets/stop.jpg"),
+                                      ambient: 0.6, diffusivity: 0.5, specularity: 1, color: Color.of(.4, .4, .4,1)}),
                        };
 
                                   // Some setup code that tracks whether the "lights are on" (the stars), and also
@@ -217,7 +216,7 @@ class Solar_System extends Scene
       this.lasttime=0;
       this.velocity=0;
       this.hp = 1;
-      this.hp_color = Color.of( .2,.8,.2,1 );
+      this.hp_color = Color.of( .13,.55,0.13,1 );
       this.blast = Mat4.identity();
 
       //game logistics
@@ -537,6 +536,47 @@ class Solar_System extends Scene
 
        building_transformation_inner.post_multiply(Mat4.translation([3,0,1]));
 
+             ////tree road stop signs/////
+      let stop_sign_transformation = this.model_transform.times(Mat4.rotation(Math.PI, [0,1,0])).times(Mat4.translation([-53, 0, -5]));
+      draw_stopsign( stop_sign_transformation);
+
+      stop_sign_transformation.post_multiply(Mat4.translation([1.5,0,-10]));
+      draw_stopsign( stop_sign_transformation);
+
+      stop_sign_transformation.post_multiply(Mat4.translation([-1.5,0,-10]));
+      draw_stopsign( stop_sign_transformation);
+
+      stop_sign_transformation.post_multiply(Mat4.translation([1,0,-10]));
+      draw_stopsign( stop_sign_transformation);
+
+      stop_sign_transformation.post_multiply(Mat4.translation([-1.5,0,-10]));
+      draw_stopsign( stop_sign_transformation);
+
+      stop_sign_transformation.post_multiply(Mat4.translation([.5,0,-10]));
+      draw_stopsign( stop_sign_transformation);
+
+      stop_sign_transformation.post_multiply(Mat4.translation([.5,0,-10]));
+      draw_stopsign( stop_sign_transformation);
+
+      //pine tree road stop signs
+      stop_sign_transformation = this.model_transform.times(Mat4.translation([45, 0, 70])).times(Mat4.rotation(0.5*Math.PI, [0,1,0]));
+      draw_stopsign( stop_sign_transformation);
+
+      stop_sign_transformation = stop_sign_transformation.times(Mat4.translation([-1, 0, -10]));
+      draw_stopsign( stop_sign_transformation);
+
+      stop_sign_transformation = stop_sign_transformation.times(Mat4.translation([.5, 0, -10]));
+      draw_stopsign( stop_sign_transformation);
+
+       stop_sign_transformation = stop_sign_transformation.times(Mat4.translation([-1.5, 0, -10]));
+      draw_stopsign( stop_sign_transformation);
+     
+      stop_sign_transformation = stop_sign_transformation.times(Mat4.translation([1, 0, -10]));
+      draw_stopsign( stop_sign_transformation);
+
+      stop_sign_transformation = stop_sign_transformation.times(Mat4.translation([-.5, 0, -10]));
+      draw_stopsign( stop_sign_transformation);
+
        this.first_frame = 0;
        this.off_road = 1;
 
@@ -557,7 +597,25 @@ class Solar_System extends Scene
         }
       }
 
-     
+     function draw_stopsign( model_transform)
+      {
+        let base_transform = model_transform.times(Mat4.translation([0,0.7,0])).times(Mat4.scale([.3,.3,.3]));
+        let bar_transform = base_transform.times( Mat4.rotation(Math.PI/2, [1,0,0]))
+                                           .times( Mat4.scale([.2,.2,5]));
+       
+        let m_body = new Body(_this.shapes.cylinder, _this.materials.plastic.override( darkgray), Vec.of(1,1,1)).emplace(bar_transform, 0, 0);
+        if(_this.first_frame)
+          _this.obstacles.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+        
+//         _this.shapes.cylinder.draw(context, program_state, bar_transform, _this.materials.metal.override( darkgray ));
+        let sign_transform = base_transform.times( Mat4.translation([0,3,.2]))
+                                            .times( Mat4.scale([1.5,1.5,1.5]))
+
+        _this.shapes.square.draw(context, program_state, sign_transform, _this.materials.stop_sign);
+
+
+      }
 
       function draw_building_1(base_transformation, x,y, z, building_color, window_color){
         base_transformation = base_transformation.times(Mat4.translation([0,2/3*y+0.1,0]));
