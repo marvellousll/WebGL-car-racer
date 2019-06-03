@@ -104,8 +104,9 @@ class Solar_System extends Scene
 
 
       this.bodies = [];
+      this.roads = [];
       this.obstacles = [];
-      this.collider = { intersect_test: Body.intersect_cube, points: new defs.Subdivision_Sphere(2), leeway: .3 };
+      this.collider = { intersect_test: Body.intersect_cube, points: new defs.Subdivision_Sphere(4), leeway: .05 };
 
                                                         // TODO (#1d): Modify one sphere shape's existing texture 
                                                         // coordinates in place.  Multiply them all by 5.
@@ -117,7 +118,7 @@ class Solar_System extends Scene
                                                               // number of lights, which must be known at compile time.
                                                               
                                                               // A simple Phong_Blinn shader without textures:
-         const phong_shader      = new defs.Phong_Shader  (2);
+      const phong_shader      = new defs.Phong_Shader  (2);
                                                               // Adding textures to the previous shader:
       const texture_shader    = new defs.Textured_Phong(2);
                                                               // Same thing, but with a trick to make the textures 
@@ -128,6 +129,7 @@ class Solar_System extends Scene
                                                               // Extra credit shaders:
       const black_hole_shader = new Black_Hole_Shader();
       const sun_shader        = new Sun_Shader();
+      const flame_shader      = new Flame_Shader();
       
                                               // *** Materials: *** wrap a dictionary of "options" for a shader.
 
@@ -154,6 +156,7 @@ class Solar_System extends Scene
                                       ambient: .5, diffusivity: 0, specularity: 0 , color: Color.of( .2,.8,.2,1 ), smoothness: 10} ),
                       black_hole: new Material( black_hole_shader ),
                              sun: new Material( sun_shader, { ambient: 1, color: Color.of( 0,0,0,1 ) } ),
+                               flame: new Material( flame_shader, { ambient: 1, color: Color.of( 0,0,0,1 ) } ),
                                skybox_zneg : new Material( texture_shader_2,
                                     { texture: new Texture("assets/zneg.jpeg"),
                                       ambient: 0.6, diffusivity: 0, specularity: 0, color: Color.of(.4,.4,.4,1) }),
@@ -201,7 +204,7 @@ class Solar_System extends Scene
 //                  .emplace(Mat4.identity().times (Mat4.scale([0.5,0.5,1])),0,0));
 
       this.obstacles.push(new Body(this.shapes.box, this.materials.plastic, Vec.of(1,1,1))
-                 .emplace(Mat4.identity().times(Mat4.translation([0,0,-10])),0,0));
+                 .emplace(Mat4.identity().times(Mat4.translation([0,0,-10])).times(Mat4.scale([.5,1,.5])),0,0));
 
       this.count = 0;
       //kinetics
@@ -210,6 +213,7 @@ class Solar_System extends Scene
       this.velocity=0;
       this.hp = 1;
       this.hp_color = Color.of( .2,.8,.2,1 );
+      this.blast = Mat4.identity();
 
       //game logistics
       this.game_start=0;
@@ -236,8 +240,8 @@ class Solar_System extends Scene
       //this.key_triggered_button( "Back",   [ "s" ], () => this.thrust[2] = -1, undefined, () => this.thrust[2] = 0 );
       this.key_triggered_button( "Move Right",  [ "d" ], () => this.thrust[0] = 10, undefined, () => this.thrust[0] = 0 );
       
-      this.key_triggered_button( "Turn Right",  [ "ArrowRight" ], () => this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1])).post_multiply(Mat4.rotation(-0.05,Vec.of(0,1,0))).post_multiply(Mat4.scale([0.5,0.5,1])), undefined, () => this.model_transform = this.model_transform );
-      this.key_triggered_button( "Turn Left",  [ "ArrowLeft" ], () => this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1])).post_multiply(Mat4.rotation(0.05,Vec.of(0,1,0))).post_multiply(Mat4.scale([0.5,0.5,1])), undefined, () => this.model_transform = this.model_transform );
+      this.key_triggered_button( "Turn Right",  [ "ArrowRight" ], () => this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1])).post_multiply(Mat4.rotation(-0.1,Vec.of(0,1,0))).post_multiply(Mat4.scale([0.5,0.5,1])), undefined, () => this.model_transform = this.model_transform );
+      this.key_triggered_button( "Turn Left",  [ "ArrowLeft" ], () => this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1])).post_multiply(Mat4.rotation(0.1,Vec.of(0,1,0))).post_multiply(Mat4.scale([0.5,0.5,1])), undefined, () => this.model_transform = this.model_transform );
       this.key_triggered_button( "Start",  [ "s" ], () => this.game_start = 1);
 
       this.key_triggered_button( "TPP/FPP",  [ "p" ], () => this.perspective = !this.perspective);
@@ -264,7 +268,7 @@ class Solar_System extends Scene
                                                                       // time as an input when calculating new transforms:
       const t = program_state.animation_time / 1000;
       this.time=program_state.animation_time;
-      
+      program_state.lights = [ new Light( Vec.of( 0,0,0,1 ), Color.of( 1,1,1,1 ), 100000 ) ];
       //velocity calculation
       if(this.time-this.lasttime==this.time){  //first scene
           this.velocity=0;
@@ -276,30 +280,36 @@ class Solar_System extends Scene
         this.velocity = Math.max(this.velocity,0);
       else if(this.acceleration == 0.01)
         this.velocity = Math.min(this.velocity,0);
-      
-      //console.log(this.obstacles);
-      //collision detection
-        this.bodies[0].inverse = Mat4.inverse( this.bodies[0].drawn_location );
-        for( let b of this.obstacles )                                      
+      let _this=this;
+      draw_road();
+   //collision with obstacles
+    for(let a of this.obstacles){
+         a.inverse = Mat4.inverse( a.drawn_location );
+        for( let b of this.bodies )                                      
         {                               // Pass the two bodies and the collision shape to check_if_colliding():
-          if( !this.bodies[0].check_if_colliding( b, this.collider ) ){
+          if( !a.check_if_colliding( b, this.collider ) ){
             continue;
           }else{
-            //this.bodies[0].shape = this.shapes.ball_4;
-            //if(!this.count)
-              //this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1]));
-            //this.bodies[0].material = this.materials.sun;
-            //this.bodies[0].material.color = orange;
-            //this.collide = 1;
-//             if(this.count!=100){
-//               this.count++;
-//               this.bodies[0].drawn_location.post_multiply(Mat4.scale([1.014,1.014,1.014]));
-//             }
             this.hp=Math.max(this.hp-0.01,0);
             this.velocity = Math.min(this.velocity, 0);
           }
         }
+     }
       
+//       //off road detection
+//       for(let a of this.roads){
+//          a.inverse = Mat4.inverse( a.drawn_location );
+//         for( let b of this.bodies )                                      
+//         {                               // Pass the two bodies and the collision shape to check_if_colliding():
+//           if( a.check_if_colliding( b, this.collider ) ){
+//             continue;
+//           }else{
+//             this.hp=Math.max(this.hp-0.01,0);
+//             //this.velocity = Math.min(this.velocity, 0);
+//           }
+//         }
+//      }
+
       //velocity cap
       if(this.velocity > 0)
         this.velocity=Math.min(this.velocity, 15);
@@ -315,32 +325,26 @@ class Solar_System extends Scene
         this.hp_color= Color.of( 1,0,0,1 );
       }
       else if(this.hp==0){//game over
-          this.bodies[0].shape = this.shapes.ball_4;
-//             if(!this.count || )
-//               this.bodies[0].drawn_location.post_multiply(Mat4.scale([2,2,1]));
-            this.bodies[0].material = this.materials.sun;
-            this.bodies[0].material.color = orange;
-            this.collide = 1;
-            if(this.count!=100){
-              this.count++;
-              this.bodies[0].drawn_location.post_multiply(Mat4.scale([1.014,1.014,1.014]));
-            }
-            this.velocity = 0;
-            this.perspective = 0;
+        if(!this.count)
+            this.blast = this.bodies[0].drawn_location.times(Mat4.scale([0.3/0.25,0.3/0.08,0.3/0.6]));
+        this.shapes.ball_4.draw(context, program_state, this.blast, this.materials.sun.override(orange));
+        this.collide = 1;
+        if(this.count!=50){
+          this.count++;
+          this.bodies[0].drawn_location.post_multiply(Mat4.scale([1.0305385,1.0305385,1.0305385]));
+          this.blast.post_multiply(Mat4.scale([1.036485,1.036485,1.036485]));
+        }
+        this.velocity = 0;
+        this.perspective = 0;
 
        }
-      this.thrust[2]=-this.velocity;
-      program_state.lights = [ new Light( Vec.of( 0,0,0,1 ), Color.of( 1,1,1,1 ), 100000 ) ];                        
+      this.thrust[2]=-this.velocity;                        
 
       let intro_transform = Mat4.identity().times(Mat4.translation([0,90,0]))
                                           .times(Mat4.scale([20,20,1/5]));
       //this.shapes.box.draw(context,program_state,intro_transform,this.materials.plastic);
       this.shapes.square.draw(context, program_state, intro_transform, this.materials.text_box)
-      let _this=this;
       
-
-      
-
 
       this.bodies[0].drawn_location = this.bodies[0].drawn_location.times( Mat4.translation( this.thrust.times(0.001*(this.time-this.lasttime)) ) );
       if(this.overlook){
@@ -356,7 +360,7 @@ class Solar_System extends Scene
           program_state.set_camera( desired_camera.map( (x,i) => Vec.from( program_state.camera_inverse[i] ).mix( x, .003*dt ) ) );
           
           //draw health bar
-          let hp_tranform = program_state.camera_transform.times(Mat4.translation([0,3,-10]))
+          let hp_tranform = program_state.camera_transform.times(Mat4.translation([0,2,-7]))
                                                        .times(Mat4.scale([this.hp,0.2,0.2]));
           this.shapes.box.draw(context,program_state,hp_tranform,this.materials.plastic.override( this.hp_color ));
         }else{
@@ -366,7 +370,7 @@ class Solar_System extends Scene
           program_state.set_camera( desired_camera.map( (x,i) => Vec.from( program_state.camera_inverse[i] ).mix( x, .003*dt ) ) );
 
           //draw health bar
-          let hp_tranform = program_state.camera_transform.times(Mat4.translation([0,3,-10]))
+          let hp_tranform = program_state.camera_transform.times(Mat4.translation([0,2,-7]))
                                                        .times(Mat4.scale([this.hp,0.2,0.2]));
           this.shapes.box.draw(context,program_state,hp_tranform,this.materials.metal.override( this.hp_color ));
         }    
@@ -378,8 +382,9 @@ class Solar_System extends Scene
       let ground_transformation = _this.model_transform.times(Mat4.scale([100,0.1,100]));
       _this.shapes.ground.draw( context, program_state, ground_transformation, _this.materials.brick );
 
-      draw_road();
-      draw_car(this.bodies[0]);
+      
+      if(!this.collide)
+        draw_car(this.bodies[0]);
       draw_skybox(Mat4.identity());
       
       ////outer buildings/////
@@ -547,8 +552,8 @@ class Solar_System extends Scene
         let body_transform = base_transformation.times(Mat4.scale([width,height,depth]));
 
         let m_body = new Body(_this.shapes.box, _this.materials.plastic.override( building_color), Vec.of(1,1,1)).emplace(body_transform, 0, 0);
-//         if(_this.first_frame)
-//           _this.obstacles.push(m_body);
+        if(_this.first_frame)
+          _this.obstacles.push(m_body);
         m_body.shape.draw( context, program_state, body_transform, m_body.material);
         
 
@@ -575,8 +580,8 @@ class Solar_System extends Scene
 
         let body_transform = base_transformation.times(Mat4.scale([x,z,height])); 
         let m_body = new Body(_this.shapes.cylinder, _this.materials.plastic.override( building_color), Vec.of(1,1,1)).emplace(body_transform, 0, 0);
-//         if(_this.first_frame)
-//           _this.obstacles.push(m_body);
+        if(_this.first_frame)
+          _this.obstacles.push(m_body);
         m_body.shape.draw( context, program_state, body_transform, m_body.material);
 
 //         _this.shapes.cylinder.draw( context, program_state, body_transform, _this.materials.plastic.override( building_color ) );
@@ -592,35 +597,76 @@ class Solar_System extends Scene
         let road_base = _this.model_transform.times(Mat4.scale([5,1,5]));
 
         let road_transformation = road_base.times(Mat4.translation([0, 0, 0])).times(Mat4.scale([0.3,0.2,4.0]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+       
+        let m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
         road_transformation = road_base.times(Mat4.translation([4, 0, -3.7])).times(Mat4.scale([4,0.2,0.3]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+        m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
         road_transformation = road_base.times(Mat4.translation([7.7, 0, -3])).times(Mat4.scale([0.3,0.2,1]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+        m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
         road_transformation = road_base.times(Mat4.translation([8.4, 0, -2.3])).times(Mat4.scale([1,0.2,0.3]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+        m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
         road_transformation = road_base.times(Mat4.translation([9.1, 0, -1.6])).times(Mat4.scale([0.3,0.2,1]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+        m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
         road_transformation = road_base.times(Mat4.translation([9.8, 0, -.9])).times(Mat4.scale([1,0.2,0.3]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
-         road_transformation = road_base.times(Mat4.translation([10.5, 0, 6.6])).times(Mat4.scale([0.3,0.2,7.8]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
+        road_transformation = road_base.times(Mat4.translation([10.5, 0, 6.6])).times(Mat4.scale([0.3,0.2,7.8]));
+        m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
 
         road_base = road_base.times(Mat4.rotation(Math.PI, [1,0,1])).times(Mat4.translation([3.7, 0, -3.7]));
         road_transformation = road_base.times(Mat4.translation([0, 0, 0])).times(Mat4.scale([0.3,0.2,4.0]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
         road_transformation = road_base.times(Mat4.translation([4, 0, -3.7])).times(Mat4.scale([4,0.2,0.3]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
         road_transformation = road_base.times(Mat4.translation([7.7, 0, -3])).times(Mat4.scale([0.3,0.2,1]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
         road_transformation = road_base.times(Mat4.translation([8.4, 0, -2.3])).times(Mat4.scale([1,0.2,0.3]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
         road_transformation = road_base.times(Mat4.translation([9.1, 0, -1.6])).times(Mat4.scale([0.3,0.2,1]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+        m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+
         road_transformation = road_base.times(Mat4.translation([9.8, 0, -.9])).times(Mat4.scale([1,0.2,0.3]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
+        
          road_transformation = road_base.times(Mat4.translation([10.5, 0, 6.6])).times(Mat4.scale([0.3,0.2,7.8]));
-        _this.shapes.box.draw( context, program_state, road_transformation, _this.materials.plastic.override( road ) );
+         m_body = new Body(_this.shapes.box, _this.materials.plastic.override( road), Vec.of(1,1,1)).emplace(road_transformation, 0, 0);
+        _this.roads.push(m_body);
+        m_body.shape.draw( context, program_state, m_body.drawn_location, m_body.material);
       }
 
 
@@ -757,6 +803,11 @@ class Solar_System extends Scene
                                                   .times( Mat4.scale([.6,.2,.4]))
 
              _this.shapes.box.draw(context, program_state, mirror2_transform, _this.materials.plastic.override( papayawhip ));    
+             
+             if (_this.acceleration > 0.01 ) {
+                 let flame_transformation = car_body.drawn_location.times(Mat4.translation([0,0,1.5]));
+                 _this.shapes.ball_4.draw(context, program_state, flame_transformation, _this.materials.flame.override(blue));
+             } 
           }                                                                                                                                                                             
 
       }
@@ -1181,6 +1232,195 @@ class Sun_Shader extends Shader
               0.05 * position + vec3( 1.0 * animation_time )
           );
           float displacement = ( 0.0 - .65 ) * noise + b;
+
+          vec3 newPosition = position + normal * displacement;
+          gl_Position = projection_camera_model_transform * vec4( newPosition, 1.0 );
+          disp = 20.*displacement;
+      }`;
+    }
+  fragment_glsl_code()           // ********* FRAGMENT SHADER *********
+    { return this.shared_glsl_code() + `
+        // Indstiller presisionen, hvor meget plads denne type variabel må bruge (high betyder meget plads)
+//       precision highp float;
+
+//       // Varying er en variabel som interpolader for fragments, mellem hver vertex.
+//       varying float noise;
+
+//       uniform sampler2D tExplosion;
+//       uniform float brightness;
+
+      void main() {
+//            float offset = .02;
+
+//            // Det her er ikke helt depth, men mere hvor lys kuglen er. Da farven sættes ud fra dens dybde (se nærmere på brugen af noise i Vertex, for at finde ud om det). higher is dimmer 
+//            float depth = 0.22;
+
+//            // lookup vertically i texturen, ved brug af noise og offset (lidt ligesom normal)
+//            // For at få de rigtige RGB værdier 
+//            vec2 tPos = vec2( 0, ( brightness + depth ) * noise + offset );
+//            vec4 color = texture2D( tExplosion, ( brightness - depth ) - tPos );
+//            gl_FragColor = vec4( color.rgb, 0.8 );
+           vec3 color = vec3((1.-disp), (0.1-disp*0.2)+0.1, (0.1-disp*0.1)+0.1*abs(sin(disp)));
+           gl_FragColor = vec4( color.rgb, 1.0 );
+           gl_FragColor *= sun_color;
+      }` ;
+    }
+}
+
+const Flame_Shader = defs.Flame_Shader =
+class Flame_Shader extends Shader
+{ update_GPU( context, gpu_addresses, graphics_state, model_transform, material )
+    {
+                      // TODO (#EC 2): Pass the same information to the shader as for EC part 1.  Additionally
+                      // pass material.color to the shader.
+        const [ P, C, M ] = [ graphics_state.projection_transform, graphics_state.camera_inverse, model_transform ],
+                      PCM = P.times( C ).times( M );
+        context.uniformMatrix4fv( gpu_addresses.projection_camera_model_transform, false, Mat.flatten_2D_to_1D( PCM.transposed() ) );
+        context.uniform1f ( gpu_addresses.animation_time, graphics_state.animation_time / 1000 ); 
+        context.uniform4fv( gpu_addresses.sun_color,    material.color       ); 
+        context.uniform1f( gpu_addresses.brightness,    .82       ); 
+        context.uniform1f( gpu_addresses.pulseHeight,    0.       ); 
+        context.uniform1f( gpu_addresses.fireSpeed,    2.       );
+        context.uniform1f( gpu_addresses.turbulenceDetail,    .63       );      
+
+    }
+                                // TODO (#EC 2):  Complete the shaders, displacing the input sphere's vertices as
+                                // a fireball effect and coloring fragments according to displacement.
+
+  shared_glsl_code()            // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
+    { return `precision mediump float;
+              varying float disp; 
+              uniform vec4 sun_color;
+              uniform float animation_time;               
+      `;
+    }
+  vertex_glsl_code()           // ********* VERTEX SHADER *********
+    { return this.shared_glsl_code() + `
+      uniform mat4 modelMatrix;
+      uniform mat4 modelViewMatrix;
+      uniform mat4 projectionMatrix;
+      uniform mat4 viewMatrix;
+      uniform mat3 normalMatrix;
+      uniform mat4 projection_camera_model_transform;
+
+      attribute vec3 position;
+      attribute vec3 normal;
+      attribute vec2 uv;
+      attribute vec2 uv2;
+
+      varying float noise;
+      uniform float time;
+      uniform float fireSpeed;
+      uniform float pulseHeight;
+      uniform float displacementHeight;
+      uniform float turbulenceDetail;
+
+      vec3 mod289(vec3 x) {
+        return x - floor(x * (1.0 / 289.0)) * 289.0;
+      }
+
+      vec4 mod289(vec4 x) {
+        return x - floor(x * (1.0 / 289.0)) * 289.0;
+      }
+
+      vec4 permute(vec4 x) {
+        return mod289(((x*34.0)+1.0)*x);
+      }
+
+      vec4 taylorInvSqrt(vec4 r) {
+        return 1.79284291400159 - 0.85373472095314 * r;
+      }
+
+      vec3 fade(vec3 t) {
+        return t*t*t*(t*(t*6.0-15.0)+10.0);
+      }
+
+      // Klassisk Perlin noise 
+      float cnoise(vec3 P) {
+        vec3 Pi0 = floor(P); // indexing
+        vec3 Pi1 = Pi0 + vec3(1.0); // Integer part + 1
+        Pi0 = mod289(Pi0);
+        Pi1 = mod289(Pi1);
+        vec3 Pf0 = fract(P); // Fractional part for interpolation
+        vec3 Pf1 = Pf0 - vec3(1.0); // Fractional part - 1.0
+        vec4 ix = vec4(Pi0.x, Pi1.x, Pi0.x, Pi1.x);
+        vec4 iy = vec4(Pi0.yy, Pi1.yy);
+        vec4 iz0 = Pi0.zzzz;
+        vec4 iz1 = Pi1.zzzz;
+
+        vec4 ixy = permute(permute(ix) + iy);
+        vec4 ixy0 = permute(ixy + iz0);
+        vec4 ixy1 = permute(ixy + iz1);
+
+        vec4 gx0 = ixy0 * (1.0 / 7.0);
+        vec4 gy0 = fract(floor(gx0) * (1.0 / 7.0)) - 0.5;
+        gx0 = fract(gx0);
+        vec4 gz0 = vec4(0.5) - abs(gx0) - abs(gy0);
+        vec4 sz0 = step(gz0, vec4(0.0));
+        gx0 -= sz0 * (step(0.0, gx0) - 0.5);
+        gy0 -= sz0 * (step(0.0, gy0) - 0.5);
+
+        vec4 gx1 = ixy1 * (1.0 / 7.0);
+        vec4 gy1 = fract(floor(gx1) * (1.0 / 7.0)) - 0.5;
+        gx1 = fract(gx1);
+        vec4 gz1 = vec4(0.5) - abs(gx1) - abs(gy1);
+        vec4 sz1 = step(gz1, vec4(0.0));
+        gx1 -= sz1 * (step(0.0, gx1) - 0.5);
+        gy1 -= sz1 * (step(0.0, gy1) - 0.5);
+
+        vec3 g000 = vec3(gx0.x,gy0.x,gz0.x);
+        vec3 g100 = vec3(gx0.y,gy0.y,gz0.y);
+        vec3 g010 = vec3(gx0.z,gy0.z,gz0.z);
+        vec3 g110 = vec3(gx0.w,gy0.w,gz0.w);
+        vec3 g001 = vec3(gx1.x,gy1.x,gz1.x);
+        vec3 g101 = vec3(gx1.y,gy1.y,gz1.y);
+        vec3 g011 = vec3(gx1.z,gy1.z,gz1.z);
+        vec3 g111 = vec3(gx1.w,gy1.w,gz1.w);
+
+        vec4 norm0 = taylorInvSqrt(vec4(dot(g000, g000), dot(g010, g010), dot(g100, g100), dot(g110, g110)));
+        g000 *= norm0.x;
+        g010 *= norm0.y;
+        g100 *= norm0.z;
+        g110 *= norm0.w;
+        vec4 norm1 = taylorInvSqrt(vec4(dot(g001, g001), dot(g011, g011), dot(g101, g101), dot(g111, g111)));
+        g001 *= norm1.x;
+        g011 *= norm1.y;
+        g101 *= norm1.z;
+        g111 *= norm1.w;
+
+        float n000 = dot(g000, Pf0);
+        float n100 = dot(g100, vec3(Pf1.x, Pf0.yz));
+        float n010 = dot(g010, vec3(Pf0.x, Pf1.y, Pf0.z));
+        float n110 = dot(g110, vec3(Pf1.xy, Pf0.z));
+        float n001 = dot(g001, vec3(Pf0.xy, Pf1.z));
+        float n101 = dot(g101, vec3(Pf1.x, Pf0.y, Pf1.z));
+        float n011 = dot(g011, vec3(Pf0.x, Pf1.yz));
+        float n111 = dot(g111, Pf1);
+
+        vec3 fade_xyz = fade(Pf0);
+        vec4 n_z = mix(vec4(n000, n100, n010, n110), vec4(n001, n101, n011, n111), fade_xyz.z);
+        vec2 n_yz = mix(n_z.xy, n_z.zw, fade_xyz.y);
+        float n_xyz = mix(n_yz.x, n_yz.y, fade_xyz.x);
+        return 2.2 * n_xyz;
+      }
+
+      // Ashima code 
+      float turbulence( vec3 p ) {
+          float t = -0.5;
+          for (float f = 1.0 ; f <= 10.0 ; f++ ){
+              float power = pow( 2.0, f );
+              t += abs( cnoise( vec3( power * p ) ) / power );
+          }
+          return t;
+      }
+
+      void main() {
+          noise = -0.8 * turbulence( .63 * position + ( animation_time * 1.0 ) );
+
+          float b = 0. * cnoise(
+              0.05 * position + vec3( 1.0 * animation_time )
+          );
+          float displacement = ( 0.0 - 2. ) * noise + b;
 
           vec3 newPosition = position + normal * displacement;
           gl_Position = projection_camera_model_transform * vec4( newPosition, 1.0 );
