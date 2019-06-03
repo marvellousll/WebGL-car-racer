@@ -18,6 +18,6 @@ You are driving in a city that we created. The purpose of the game is for you to
 
 ## Roles
 * Yuan Cheng: building models for vehicle, skybox, block signs, trees; sound implementation; README writeup.
-* Chenglai Huang: building the city (buildings, roads, layout), merge components to the final version.
+* Chenglai Huang: building models for road, buildings, ground, vehicle animation; incorporating all models into the city.
 * Xiao Jiang: building game kinetics and logistic such as HP bar mechanisms and calculation of acceleration, friction, velocity and displacement
 * Yiwei Liao: building collision detection(with obstacles and off-road detection); explosion; camera follow(FPP,TPP,Bird View); perspective;
