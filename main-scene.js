@@ -102,6 +102,10 @@ class Solar_System extends Scene
                   'tetrahedron': new Tetrahedron(false) };
       this.shapes.ground.arrays.texture_coord.forEach( coord => coord.scale(50));
 
+      this.sounds = { 'blast' : new Audio('assets/blast.wav'),
+                      'drift' : new Audio('assets/carDrifting.wav'),
+                 'accelerate' : new Audio('assets/m3_accelerate.wav')};
+
 
       this.bodies = [];
       this.roads = [];
@@ -250,6 +254,18 @@ class Solar_System extends Scene
     }
   display( context, program_state )
     {    
+      let _this=this;
+      function play_sound( name, volume = 1 )
+      { 
+        if( 0 < _this.sounds[ name ].currentTime && _this.sounds[ name ].currentTime < .3 ) return;
+        _this.sounds[ name ].currentTime = 0;
+        _this.sounds[ name ].volume = Math.min(Math.max(volume, 0), 1);
+        _this.sounds[ name ].play();
+      }
+
+      if( this.acceleration == 0.05 ) { play_sound("accelerate"); }
+      if( this.acceleration == -.03 ) { play_sound("drift"); }
+
       if( !context.scratchpad.controls ) 
         {     
           this.children.push( context.scratchpad.controls = new defs.Movement_Controls() ); 
@@ -281,8 +297,7 @@ class Solar_System extends Scene
         this.velocity = Math.max(this.velocity,0);
       else if(this.acceleration == 0.01)
         this.velocity = Math.min(this.velocity,0);
-      let _this=this;
-      
+      draw_road();
    //collision with obstacles
     for(let a of this.obstacles){
          a.inverse = Mat4.inverse( a.drawn_location );
@@ -329,7 +344,10 @@ class Solar_System extends Scene
       }
       else if(this.hp==0){//game over
         if(!this.count)
+        {
             this.blast = this.bodies[0].drawn_location.times(Mat4.scale([0.3/0.25,0.3/0.08,0.3/0.6]));
+            if( this.count == 0) { play_sound("blast"); }
+        }
         this.shapes.ball_4.draw(context, program_state, this.blast, this.materials.sun.override(orange));
         this.collide = 1;
         if(this.count!=50){
